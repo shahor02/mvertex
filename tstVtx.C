@@ -1,4 +1,4 @@
-
+TH1* htg = 0, *htb=0;
 TObjArray genVtx;
 MVertexFinder* vtf = 0;
 
@@ -18,7 +18,18 @@ void tstVtx(int nv=1, int ntrMean=20, int nNoise=20)
     vtf->SetConstraintError(sigVR*sigVR,sigVR*sigVR,sigVZ*sigVZ);
   }
   vtf->Reset();
-  
+
+  double spanZ = 4*sigVZ+meanV[2];
+  if (!htg) {
+    htg = new TH1F("htg","",20*spanZ,-spanZ,spanZ);
+    htb = new TH1F("htb","",20*spanZ,-spanZ,spanZ);
+    htg->SetLineColor(kRed); htg->SetMarkerColor(kRed);
+    htb->SetLineColor(kBlue); htb->SetMarkerColor(kBlue);
+  }
+  else {
+    htg->Reset();
+    htb->Reset();
+  }
   genVtx.Delete();
   for (int iv=0;iv<nv;iv++) {
     double vXYZ[3] = {
@@ -32,7 +43,7 @@ void tstVtx(int nv=1, int ntrMean=20, int nNoise=20)
     //
     int ntr = 0;
     while (ntr<2) ntr = gRandom->Poisson(ntrMean);
-    for (int itr=0;itr<ntrMean;itr++) {
+    for (int itr=0;itr<ntr;itr++) {
       double alp = gRandom->Rndm()*TMath::Pi()*2;
       double sna = TMath::Sin(alp);
       double csa = TMath::Cos(alp);
@@ -46,6 +57,7 @@ void tstVtx(int nv=1, int ntrMean=20, int nNoise=20)
       double tgl = (gRandom->Rndm()-0.5)*2;
       //
       vtf->AddTrack(xtr,ytr,ztr, sigTR*sigTR, sigTR*sigTR, 0, 0., tgl,alp);
+      htg->Fill(ztr);
     }
     vtx->SetNContributors(ntr);
   }
@@ -64,10 +76,15 @@ void tstVtx(int nv=1, int ntrMean=20, int nNoise=20)
     double tgl = (gRandom->Rndm()-0.5)*2;
     //
     vtf->AddTrack(xtr,ytr,ztr, sigTR*sigTR, sigTR*sigTR, 0, 0., tgl,alp);
+    htb->Fill(ztr);
   }
 
+  htg->GetMaximum() > htb->GetMaximum() ? htg->Draw() : htb->Draw();
+  htg->GetMaximum() > htb->GetMaximum() ? htb->Draw("same") : htg->Draw("same");
+  
   genVtx.Print();
-  vtf->FindNextVertex();
+  //  vtf->FindNextVertex();
+  vtf->FindVertices();
 }
 
 

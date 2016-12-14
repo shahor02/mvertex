@@ -43,21 +43,32 @@ class MVertexFinder : public TObject
   
   MVertexFinder();
   void Reset();
-  bool FindNextVertex();
+  bool FindVertices();
+  bool FindNextVertex(float zseed=0);
+  bool FitVertex(std::vector<vtxTrack> &tracks, vertex &vtx, float &scaleSigma2, bool fillError);
   void AddTrack(float x,float y,float z,float sy2,float sz2, float syz, float snp, float tgl, float alp);
   void SetConstraint(float x,float y,float z);
-  void SetConstraintError(float sy2,float sz2,float syz);  
+  void SetConstraintError(float sy2,float sz2,float syz);
   //
-  void PrintVertices() const;
+  void  SetMinChangeZ(float v)                     {mMinChangeZ = v;}
+  float GetMinChangeZ() const                      {return mMinChangeZ;}
+  //
+  void  SetZRange(float z)                         {mZRange = z;}
+  float GetZRange()     const                      {return mZRange;}
+  //
+  void  PrintVertices() const;
   //
  protected:
   std::vector<vtxTrack> mVtxTracks;           ///< container for input tracks
   std::vector<vertex> mVertices;              ///< container for found vertices
   int   mMaxVtxIter;                          ///< max number of iterations per vertex
+  float mScalSigma2Start;                     ///< initial value of scaling sigma^2
+  float mMinChangeZ;                          ///< stop if Z changes by less than this amount
   float mStopScaleChange;                     ///< stopping condition: max sigma2New/sigma2
   float mSigma2Accept;                        ///< stopping condition: acceptable Sigma2
   float mSigma2Push;                          ///< trigger algo push if iterations stuck at sigma2 above this
   float mTukey2;                              ///< Tukey parameter^2
+  float mZRange;                              ///< ZRange to accept
   float mVtxConstraint[3];                    ///< nominal vertex constraint
   float mVtxConstrErr[3];                     ///< nominal vertex constraint errors
   //
