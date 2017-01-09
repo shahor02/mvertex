@@ -130,7 +130,7 @@ bool MVertexFinder::FindNextVertex(std::vector<MVertexFinder::vtxTrack> &tracks,
     printf(">>#%3d Ntr:%4d Vtx: %+e %+e %+e Sig: %f\n",nIter,ntr, vtx.mXYZ[0],vtx.mXYZ[1],vtx.mXYZ[2], scaleSigma2);
     //
     float scaleSigma2Old = scaleSigma2, oldZ = vtx.mXYZ[2];
-    res = FitVertex(mVtxTracks,vtx, scaleSigma2, false); // fit with current seed and scaling sigma
+    res = FitVertex(mVtxTracks,vtx, scaleSigma2, false, zmin, zmax); // fit with current seed and scaling sigma
     if (!res) break;
 
     float zChange = vtx.mXYZ[2] - oldZ;
@@ -160,7 +160,7 @@ bool MVertexFinder::FindNextVertex(std::vector<MVertexFinder::vtxTrack> &tracks,
 	int ntSide[2] = {0};
 	for (int itr=ntr;itr--;) {
 	  vtxTrack &trc = tracks[itr];
-	  if (trc.IsUsed()) continue; // the track is invalidated, skip
+	  if (trc.IsUsed() || trc.mZ>zmax || trc.mZ<zmin) continue; // the track is invalidated, skip
 	  float wghT = trc.mWgh;
 	  if (wghT>0) {
 	    int ind = (trc.mZ<vtx.mXYZ[2]) ? 0 : 1; // weight to the left and right of current vertex
@@ -198,11 +198,11 @@ bool MVertexFinder::FindNextVertex(std::vector<MVertexFinder::vtxTrack> &tracks,
     //
   }
   scaleSigma2 = 1.f;
-  if (res && (res=FitVertex(mVtxTracks,vtx, scaleSigma2, true)) ) { // final fit with error extraction
+  if (res && (res=FitVertex(mVtxTracks,vtx, scaleSigma2, true, zmin,zmax)) ) { // final fit with error extraction
     mVertices.push_back(vtx);
     for (int itr=ntr;itr--;) {
       vtxTrack &trc = mVtxTracks[itr];
-      if (trc.IsUsed() || trc.mWgh==0.f) continue; // the track is invalidated, skip
+      if (trc.IsUsed() || trc.mWgh==0.f || trc.mZ>zmax || trc.mZ<zmin) continue; // the track is invalidated, skip
       trc.SetUsed();
     }
   }

@@ -81,9 +81,10 @@ void tstVtx(int nv=1, int ntrMean=20, int nNoise=20)
 
   htg->GetMaximum() > htb->GetMaximum() ? htg->Draw() : htb->Draw();
   htg->GetMaximum() > htb->GetMaximum() ? htb->Draw("same") : htg->Draw("same");
+  gPad->Modified();
   
   genVtx.Print();
-  //  vtf->FindNextVertex();
+  //vtf->FindNextVertex();
   vtf->FindVertices();
 }
 
