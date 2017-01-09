@@ -29,6 +29,9 @@ MVertexFinder::MVertexFinder() :
 bool MVertexFinder::FindNextVertex(float zseed)
 {
   //
+  static int level = 0;
+  level++;
+  printf("\nStarting at level %d\n",level);
   //
   vertex vtx;
   vtx.mXYZ[0] = mVtxConstraint[0];
@@ -37,7 +40,11 @@ bool MVertexFinder::FindNextVertex(float zseed)
   //
   int nIter = 0;
   int ntr = mVtxTracks.size();
-  if (ntr<2) return false;
+  if (ntr<2) {
+    printf("Sopping level %d: ntr=%d\n",level,ntr);
+    level--;
+    return false;
+  }
   //
   float scaleSigma2 = mScalSigma2Start;
   bool vtxOK = false;
@@ -56,8 +63,8 @@ bool MVertexFinder::FindNextVertex(float zseed)
     float zChange = vtx.mXYZ[2] - oldZ;
     //
     float sigRat = scaleSigma2/scaleSigma2Old;
-    printf("<<#%3d Ntacc:%4d Vtx: %+e %+e %+e Sig:%f -> %f %f\n",nIter,vtx.mNTracks, vtx.mXYZ[0],vtx.mXYZ[1],vtx.mXYZ[2],
-	   scaleSigma2Old,scaleSigma2,sigRat);
+    printf("<<#%3d Ntacc:%4d Vtx: %+e %+e %+e Sig:%f -> %f %f (Dz:%+.4f)\n",nIter,vtx.mNTracks, vtx.mXYZ[0],vtx.mXYZ[1],vtx.mXYZ[2],
+	   scaleSigma2Old,scaleSigma2,sigRat,zChange);
     //
     if (sigRat>mStopScaleChange) { // sigma does not drop enough anymore, check convergence
       if ((fabs(zChange)<mMinChangeZ && scaleSigma2<mSigma2Push) || scaleSigma2<mSigma2Accept) { // converged, finalize the vertex
@@ -88,9 +95,123 @@ bool MVertexFinder::FindNextVertex(float zseed)
     }
   }
   //
+  printf("Stopping level %d: res=%d\n",level,res);
+  level--;
   return res;
 }
 
+//______________________________________________
+bool MVertexFinder::FindNextVertex(std::vector<MVertexFinder::vtxTrack> &tracks,float zseed,float sigScale2Ini)
+{
+  //
+  static int level = 0;
+  level++;
+  printf("\nStarting at level %d : Zseed=%+e sg2=%e\n",level,zseed,sigScale2Ini);
+  
+  vertex vtx;
+  vtx.mXYZ[0] = mVtxConstraint[0];
+  vtx.mXYZ[1] = mVtxConstraint[1];
+  vtx.mXYZ[2] = zseed;
+  //
+  int nIter = 0;
+  int ntr = tracks.size();
+  if (ntr<2) {
+    printf("Sopping level %d: ntr=%d\n",level,ntr);
+    level--;
+    return false;
+  }
+  //
+  float scaleSigma2 = sigScale2Ini;
+  bool vtxOK = false;
+
+  bool res = false;
+  while(nIter++<mMaxVtxIter) {
+    //
+    printf(">>#%3d Ntr:%4d Vtx: %+e %+e %+e Sig: %f\n",nIter,ntr, vtx.mXYZ[0],vtx.mXYZ[1],vtx.mXYZ[2], scaleSigma2);
+    //
+    float scaleSigma2Old = scaleSigma2, oldZ = vtx.mXYZ[2];
+    res = FitVertex(mVtxTracks,vtx, scaleSigma2, false); // fit with current seed and scaling sigma
+    if (!res) break;
+
+    float zChange = vtx.mXYZ[2] - oldZ;
+    //
+    float sigRat = scaleSigma2/scaleSigma2Old;
+    printf("<<#%3d Ntacc:%4d Vtx: %+e %+e %+e Sig:%f -> %f %f (Dz:%+.4f)\n",nIter,vtx.mNTracks, vtx.mXYZ[0],vtx.mXYZ[1],vtx.mXYZ[2],
+	   scaleSigma2Old,scaleSigma2,sigRat,zChange);
+    //
+    if (sigRat>mStopScaleChange) { // sigma does not drop enough anymore, check convergence
+      if ((fabs(zChange)<mMinChangeZ && scaleSigma2<mSigma2Push) || scaleSigma2<mSigma2Accept) { // converged, finalize the vertex
+	break;
+      }
+      else if (scaleSigma2<mSigma2Push) { // decrease sigma to get rid of outliers ???
+	scaleSigma2 = (mSigma2Accept+scaleSigma2)*0.5;
+	if (scaleSigma2<1.f) scaleSigma2 = 1.f; 
+	printf("-->pushing sigma to %f\n",scaleSigma2);
+	continue;
+      }
+      else {
+	double wghSide[2]={0},wghZSide[2]={0}; //
+	int ntSide[2] = {0};
+	for (int itr=ntr;itr--;) {
+	  vtxTrack &trc = tracks[itr];
+	  if (trc.IsUsed()) continue; // the track is invalidated, skip
+	  float wghT = trc.mWgh;
+	  if (wghT>0) {
+	    int ind = (trc.mZ<vtx.mXYZ[2]) ? 0 : 1; // weight to the left and right of current vertex
+	    wghSide[ind] += wghT;
+	    wghZSide[ind] += wghT*trc.mZ;
+	    ntSide[ind]++;
+	  }
+	}
+	printf("Split to L[Z=%+e N=%3d W:%e] R[Z=%+e N=%3d W=%e]\n",
+	       wghSide[0]>1e-6 ? wghZSide[0]/wghSide[0] : -999,ntSide[0], wghSide[0],
+	       wghSide[1]>1e-6 ? wghZSide[1]/wghSide[1] : -999,ntSide[1], wghSide[1]);
+	for (int iside=2;iside--;) {
+	  if (wghSide[iside]<1e-6) continue; // FIXME constant
+	  float zseedSide = wghZSide[iside]/wghSide[iside];
+	  printf("Doing %s with Z=%f Sig2Scl=%f\n",iside ? "Right":"Left",zseedSide, scaleSigma2);
+	  FindNextVertex(tracks,zseedSide,scaleSigma2/2.f);
+	}
+	scaleSigma2 *= 0.5;
+	if (scaleSigma2<1.f) scaleSigma2 = 1.f; 
+	printf("split sigma to %f\n",scaleSigma2);
+	continue;
+      }
+    }
+    //
+  }
+  scaleSigma2 = 1.f;
+  if (res && (res=FitVertex(mVtxTracks,vtx, scaleSigma2, true)) ) { // final fit with error extraction
+    mVertices.push_back(vtx);
+    for (int itr=ntr;itr--;) {
+      vtxTrack &trc = mVtxTracks[itr];
+      if (trc.IsUsed() || trc.mWgh==0.f) continue; // the track is invalidated, skip
+      trc.SetUsed();
+    }
+  }
+  //
+  printf("Stopping level %d: res=%d\n",level,res);
+  level--;
+ 
+  return res;
+}
+
+
+//______________________________________________
+bool MVertexFinder::FindVertices()
+{
+  int ntr = mVtxTracks.size();
+  if (ntr<2) return false;
+  
+  const float zresChar = 200e-4; // characteristic Z resolution
+  float sig2ini = (1.+2.*mZRange)/zresChar, zini=0.0f;
+  sig2ini *= sig2ini;
+  //
+  while (FindNextVertex( mVtxTracks, zini, sig2ini)) {}
+    
+}
+
+/*
 //______________________________________________
 bool MVertexFinder::FindVertices()
 {
@@ -144,7 +265,7 @@ bool MVertexFinder::FindVertices()
   }
     
 }
-
+*/
 //______________________________________________
 bool MVertexFinder::FitVertex(std::vector<MVertexFinder::vtxTrack> &tracks, MVertexFinder::vertex &vtx,
 			      float &scaleSigma2, bool fillError)
