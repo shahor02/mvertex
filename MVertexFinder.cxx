@@ -106,7 +106,7 @@ bool MVertexFinder::FindNextVertex(std::vector<MVertexFinder::vtxTrack> &tracks,
   //
   static int level = 0;
   level++;
-  printf("\nStarting at level %d : Zseed=%+e sg2=%e\n",level,zseed,sigScale2Ini);
+  printf("\nStarting at level %d : Zseed=%+e sg2=%e | %+e<Z<%e\n",level,zseed,sigScale2Ini,zmin,zmax);
   
   vertex vtx;
   vtx.mXYZ[0] = mVtxConstraint[0];
@@ -286,7 +286,7 @@ bool MVertexFinder::FindVertices()
 */
 //______________________________________________
 bool MVertexFinder::FitVertex(std::vector<MVertexFinder::vtxTrack> &tracks, MVertexFinder::vertex &vtx,
-			      float &scaleSigma2, bool fillError)
+			      float &scaleSigma2, bool fillError, float zmin,float zmax)
 {
   const double kTiny = 1e-6;
   const double kTukey2 = 6;
@@ -299,7 +299,7 @@ bool MVertexFinder::FitVertex(std::vector<MVertexFinder::vtxTrack> &tracks, MVer
   //
   for (int itr=ntr;itr--;) {
     vtxTrack &trc = tracks[itr];
-    if (trc.IsUsed()) continue; // the track is invalidated, skip
+    if (trc.IsUsed() || trc.mZ>zmax || trc.mZ<zmin) continue; // the track is invalidated, skip
     // determine weight of the track
     // current vertex in the track proper frame
     float vlocX =  curVtx[0]*trc.mCosAlp+curVtx[1]*trc.mSinAlp;

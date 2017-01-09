@@ -46,7 +46,7 @@ class MVertexFinder : public TObject
   bool FindVertices();
   bool FindNextVertex(float zseed=0);
   bool FindNextVertex(std::vector<vtxTrack> &tracks,float zseed,float sigScale2Ini, float zmin,float zmax);
-  bool FitVertex(std::vector<vtxTrack> &tracks, vertex &vtx, float &scaleSigma2, bool fillError);
+  bool FitVertex(std::vector<vtxTrack> &tracks, vertex &vtx, float &scaleSigma2, bool fillError, float zmin=-999.f,float zmax=999.f);
   void AddTrack(float x,float y,float z,float sy2,float sz2, float syz, float snp, float tgl, float alp);
   void SetConstraint(float x,float y,float z);
   void SetConstraintError(float sy2,float sz2,float syz);
