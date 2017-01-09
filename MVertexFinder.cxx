@@ -101,7 +101,7 @@ bool MVertexFinder::FindNextVertex(float zseed)
 }
 
 //______________________________________________
-bool MVertexFinder::FindNextVertex(std::vector<MVertexFinder::vtxTrack> &tracks,float zseed,float sigScale2Ini)
+bool MVertexFinder::FindNextVertex(std::vector<MVertexFinder::vtxTrack> &tracks,float zseed,float sigScale2Ini, float zmin,float zmax)
 {
   //
   static int level = 0;
@@ -139,7 +139,13 @@ bool MVertexFinder::FindNextVertex(std::vector<MVertexFinder::vtxTrack> &tracks,
     printf("<<#%3d Ntacc:%4d Vtx: %+e %+e %+e Sig:%f -> %f %f (Dz:%+.4f)\n",nIter,vtx.mNTracks, vtx.mXYZ[0],vtx.mXYZ[1],vtx.mXYZ[2],
 	   scaleSigma2Old,scaleSigma2,sigRat,zChange);
     //
-    if (sigRat>mStopScaleChange) { // sigma does not drop enough anymore, check convergence
+    if (scaleSigma2<0.5f) {
+      printf("sigmaScale went below min., stop iterations\n");
+      break;
+    }
+    //
+    
+    if (sigRat<1.0f && sigRat>mStopScaleChange) { // sigma does not drop enough anymore, check convergence
       if ((fabs(zChange)<mMinChangeZ && scaleSigma2<mSigma2Push) || scaleSigma2<mSigma2Accept) { // converged, finalize the vertex
 	break;
       }
@@ -166,11 +172,22 @@ bool MVertexFinder::FindNextVertex(std::vector<MVertexFinder::vtxTrack> &tracks,
 	printf("Split to L[Z=%+e N=%3d W:%e] R[Z=%+e N=%3d W=%e]\n",
 	       wghSide[0]>1e-6 ? wghZSide[0]/wghSide[0] : -999,ntSide[0], wghSide[0],
 	       wghSide[1]>1e-6 ? wghZSide[1]/wghSide[1] : -999,ntSide[1], wghSide[1]);
-	for (int iside=2;iside--;) {
-	  if (wghSide[iside]<1e-6) continue; // FIXME constant
-	  float zseedSide = wghZSide[iside]/wghSide[iside];
-	  printf("Doing %s with Z=%f Sig2Scl=%f\n",iside ? "Right":"Left",zseedSide, scaleSigma2);
-	  FindNextVertex(tracks,zseedSide,scaleSigma2/2.f);
+	//
+	{
+	  int iside=0;
+	  if (wghSide[iside]>1e-6) {  // FIXME constant
+	    float zseedSide = wghZSide[iside]/wghSide[iside];
+	    printf("Doing %s with Z=%f Sig2Scl=%f\n",iside ? "Right":"Left",zseedSide, scaleSigma2);
+	    FindNextVertex(tracks,zseedSide,scaleSigma2/2.f, zmin,vtx.mXYZ[2]);
+	  }
+	  //
+	  iside=1;
+	  if (wghSide[iside]>1e-6) {  // FIXME constant
+	    float zseedSide = wghZSide[iside]/wghSide[iside];
+	    printf("Doing %s with Z=%f Sig2Scl=%f\n",iside ? "Right":"Left",zseedSide, scaleSigma2);
+	    FindNextVertex(tracks,zseedSide,scaleSigma2/2.f, vtx.mXYZ[2],zmax);
+	  }
+	  //
 	}
 	scaleSigma2 *= 0.5;
 	if (scaleSigma2<1.f) scaleSigma2 = 1.f; 
@@ -191,6 +208,7 @@ bool MVertexFinder::FindNextVertex(std::vector<MVertexFinder::vtxTrack> &tracks,
   }
   //
   printf("Stopping level %d: res=%d\n",level,res);
+  PrintVertices();
   level--;
  
   return res;
@@ -207,7 +225,7 @@ bool MVertexFinder::FindVertices()
   float sig2ini = (1.+2.*mZRange)/zresChar, zini=0.0f;
   sig2ini *= sig2ini;
   //
-  while (FindNextVertex( mVtxTracks, zini, sig2ini)) {}
+  while (FindNextVertex( mVtxTracks, zini, sig2ini,-mZRange,mZRange)) {}
     
 }
 
