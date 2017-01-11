@@ -13,9 +13,9 @@ class MVertexFinder : public TObject
 	Assumed to be defined in the proximity to vertex, so that the straight-line
 	extrapolation Y=mY+mTgP*(x-mX) and Z=mZ+mTgL*(x-mX) is precise
     */
-    enum {kUsed};
-    void SetBit(int i)        {flags |= 0x1<<i;}
-    bool TestBit(int i) const {return flags&(0x1<<i);}
+    enum {kUsed, kNoVtx=-1,kDiscarded=kNoVtx-1};
+    void SetBit(int i)        {mFlags |= 0x1<<i;}
+    bool TestBit(int i) const {return mFlags&(0x1<<i);}
     //
     bool IsUsed()       const {return TestBit(kUsed);}
     void SetUsed()            {SetBit(kUsed);}
@@ -31,7 +31,8 @@ class MVertexFinder : public TObject
     float mCosAlp;      ///< cos of alpha frame
     float mSinAlp;      ///< sin of alpha frame
     float mWgh;         ///< track weight wrt current vertex seed
-    char  flags;        ///< status bits
+    char  mFlags;        ///< status bits
+    short mVtxID;       ///< assigned vertex
   };
 
   struct vertex {
@@ -58,11 +59,13 @@ class MVertexFinder : public TObject
   float GetZRange()     const                      {return mZRange;}
   //
   void  PrintVertices() const;
+  void  PrintTracks()   const;
   //
  protected:
   std::vector<vtxTrack> mVtxTracks;           ///< container for input tracks
   std::vector<vertex> mVertices;              ///< container for found vertices
   int   mMaxVtxIter;                          ///< max number of iterations per vertex
+  int   mMinTracksPerVtx;                     ///< min number of tracks per vertex
   float mScalSigma2Start;                     ///< initial value of scaling sigma^2
   float mMinChangeZ;                          ///< stop if Z changes by less than this amount
   float mStopScaleChange;                     ///< stopping condition: max sigma2New/sigma2
