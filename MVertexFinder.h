@@ -14,11 +14,6 @@ class MVertexFinder : public TObject
 	extrapolation Y=mY+mTgP*(x-mX) and Z=mZ+mTgL*(x-mX) is precise
     */
     enum {kUsed, kNoVtx=-1,kDiscarded=kNoVtx-1};
-    void SetBit(int i)        {mFlags |= 0x1<<i;}
-    bool TestBit(int i) const {return mFlags&(0x1<<i);}
-    //
-    bool IsUsed()       const {return TestBit(kUsed);}
-    void SetUsed()            {SetBit(kUsed);}
     
     float mX;           ///< reference X
     float mY;           ///< Y at X
@@ -31,8 +26,9 @@ class MVertexFinder : public TObject
     float mCosAlp;      ///< cos of alpha frame
     float mSinAlp;      ///< sin of alpha frame
     float mWgh;         ///< track weight wrt current vertex seed
-    char  mFlags;        ///< status bits
     short mVtxID;       ///< assigned vertex
+    //
+    bool CanUse(float zmin,float zmax) const {return mVtxID==kNoVtx && mZ>zmin && mZ<zmax;}
   };
 
   struct vertex {
@@ -45,7 +41,6 @@ class MVertexFinder : public TObject
   MVertexFinder();
   void Reset();
   bool FindVertices();
-  bool FindNextVertex(float zseed=0);
   bool FindNextVertex(std::vector<vtxTrack> &tracks,float zseed,float sigScale2Ini, float zmin,float zmax);
   bool FitVertex(std::vector<vtxTrack> &tracks, vertex &vtx, float &scaleSigma2, bool fillError, float zmin=-999.f,float zmax=999.f);
   void AddTrack(float x,float y,float z,float sy2,float sz2, float syz, float snp, float tgl, float alp);
@@ -58,23 +53,33 @@ class MVertexFinder : public TObject
   void  SetZRange(float z)                         {mZRange = z;}
   float GetZRange()     const                      {return mZRange;}
   //
+  void  SetTukey(float t)                          {mTukey2I = t>0.f ? 1.f/(t*t) : 1.f/(kDefTukey*kDefTukey);}
+  float GetTukey()      const;
+  //
   void  PrintVertices() const;
   void  PrintTracks()   const;
   //
  protected:
+
+  void LRAttractors(const std::vector<vtxTrack> &tracks,float zmn,float zmx,float currZ,float zLR[2]) const;
+  
   std::vector<vtxTrack> mVtxTracks;           ///< container for input tracks
   std::vector<vertex> mVertices;              ///< container for found vertices
   int   mMaxVtxIter;                          ///< max number of iterations per vertex
   int   mMinTracksPerVtx;                     ///< min number of tracks per vertex
-  float mScalSigma2Start;                     ///< initial value of scaling sigma^2
   float mMinChangeZ;                          ///< stop if Z changes by less than this amount
   float mStopScaleChange;                     ///< stopping condition: max sigma2New/sigma2
   float mSigma2Accept;                        ///< stopping condition: acceptable Sigma2
   float mSigma2Push;                          ///< trigger algo push if iterations stuck at sigma2 above this
-  float mTukey2;                              ///< Tukey parameter^2
+  float mTukey2I;                             ///< 1./[Tukey parameter]^2
   float mZRange;                              ///< ZRange to accept
   float mVtxConstraint[3];                    ///< nominal vertex constraint
   float mVtxConstrErr[3];                     ///< nominal vertex constraint errors
+  //
+  static const float kDefTukey;               ///< def.value for tukey constant
+  static const float kHugeF;                  ///< very large float
+  static const float kAlmost0F;               ///< tiny float
+  static const double kAlmost0D;              ///< tiny double
   //
   ClassDef(MVertexFinder,1)
 };
