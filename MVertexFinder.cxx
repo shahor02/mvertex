@@ -19,7 +19,7 @@ MVertexFinder::MVertexFinder() :
   ,mStopScaleChange(0.95)
   ,mSigma2Accept(3.0)
   ,mSigma2Push(10.)
-  ,mTukey2(6)
+  ,mTukey2(25.f)
   ,mZRange(30.0f)
 {
   mVtxConstraint[0]=mVtxConstraint[1]=mVtxConstraint[2]=0.f;
@@ -149,7 +149,7 @@ bool MVertexFinder::FindNextVertex(std::vector<MVertexFinder::vtxTrack> &tracks,
     }
     //
     
-    if (sigRat<1.0f && sigRat>mStopScaleChange) { // sigma does not drop enough anymore, check convergence
+    if (/*sigRat<1.0f &&*/ sigRat>mStopScaleChange) { // sigma does not drop enough anymore, check convergence
       if ((fabs(zChange)<mMinChangeZ && scaleSigma2<mSigma2Push) || scaleSigma2<mSigma2Accept) { // converged, finalize the vertex
 	finalize=true;
 	break;
