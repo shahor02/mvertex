@@ -1,6 +1,7 @@
 #include "MVertexFinder.h"
 #include "AliSymMatrix.h"
 #include <math.h>
+#include <algorithm>
 //#include <array>
 
 ClassImp(MVertexFinder)
@@ -10,10 +11,13 @@ const double MVertexFinder::kAlmost0D  = 1e-16;
 const float  MVertexFinder::kHugeF = 1e99;
 const float  MVertexFinder::kDefTukey = 5.0f;
 
+using namespace std;
+
 //______________________________________________
 MVertexFinder::MVertexFinder() :
   mVtxTracks()
   ,mVertices()
+  ,mUseZSorting(true)
   ,mMaxVtxIter(100)
   ,mMinTracksPerVtx(2)
   ,mMinChangeZ(10e-4f)
@@ -59,25 +63,26 @@ bool MVertexFinder::FindNextVertex(std::vector<MVertexFinder::vtxTrack> &tracks,
     res = FitVertex(tracks,vtx, scaleSigma2, false, zmin, zmax); // fit with current seed and scaling sigma
     if (!res) break;
 
-    float zChange = vtx.mXYZ[2] - oldZ;
+    float zChange = fabs(vtx.mXYZ[2] - oldZ);
     //
     float sigRat = scaleSigma2/scaleSigma2Old;
     printf("<<#%3d Ntacc:%4d Vtx: %+e %+e %+e Sig:%f -> %f %f (Dz:%+.4f)\n",nIter,vtx.mNTracks, vtx.mXYZ[0],vtx.mXYZ[1],vtx.mXYZ[2],
 	   scaleSigma2Old,scaleSigma2,sigRat,zChange);
     //
-    if (scaleSigma2<0.5f) {
+    if (scaleSigma2<1.f) {
       printf("sigmaScale went below min., stop iterations\n");
       finalize=true;
       break;
     }
     //
-    
-    if (/*sigRat<1.0f &&*/ sigRat>mStopScaleChange) { // sigma does not drop enough anymore, check convergence
-      if ((fabs(zChange)<mMinChangeZ && scaleSigma2<mSigma2Push) || scaleSigma2<mSigma2Accept) { // converged, finalize the vertex
+    if ( (sigRat<1.0f && sigRat>mStopScaleChange) || zChange<mMinChangeZ) { // sigma does not drop enough anymore, check convergence
+      //      if ((zChange<mMinChangeZ && scaleSigma2<mSigma2Push) || scaleSigma2<mSigma2Accept) { // converged, finalize the vertex
+      if (zChange<mMinChangeZ && scaleSigma2<mSigma2Accept) { // converged, finalize the vertex	
+	printf("Converged in dZ or dSigmaChange, stop iterations\n");
 	finalize=true;
 	break;
       }
-      else if (vtx.mNTracks>(mMinTracksPerVtx<<1)) { // stuck between 2 attractors?
+      else if (vtx.mNTracks>mMinTracksPerVtx) { // stuck between 2 attractors?
 	float zLR[2]={0.f};
 	LRAttractors(tracks,zmin,zmax,vtx.mXYZ[2],zLR); // side to be discarded has zLR == kHugeF (>> than zmax)
 	if (zLR[0]<zmax) FindNextVertex(tracks,zLR[0],scaleSigma2, zmin, vtx.mXYZ[2]); // left: zmin<ZL<curZ
@@ -148,6 +153,8 @@ bool MVertexFinder::FindVertices()
 {
   int ntr = mVtxTracks.size();
   if (ntr<2) return false;
+
+  if (mUseZSorting) sort(mVtxTracks.begin(),mVtxTracks.end());
   
   const float zresChar = 200e-4; // characteristic Z resolution
   float sig2ini = (1.+2.*mZRange)/zresChar, zini=0.0f;
@@ -328,4 +335,32 @@ float MVertexFinder::GetTukey() const
 {
   // convert 1/tukey^2 to tukey
   return sqrtf(1./mTukey2I);
+}
+
+//______________________________________________
+void MVertexFinder::SelectFreeTracks(const std::vector<int> &src,
+				     std::vector<int> &tgt,
+				     float zmn,float zmx) const
+{
+  // select free tracks in z-range from src and store their pointers in tgt
+  int ntr = src.size();
+  tgt.clear();
+  tgt.reserve(ntr);
+  //
+  if (mUseZSorting) {
+    for (int it=0;it<ntr;++it) {
+      int tID = src[it];
+      const vtxTrack& trc = mVtxTracks[tID];
+      if (trc.mZ<zmn) continue;  // use binary search or lower_bound ?
+      if (trc.mZ>zmx) break;
+      if (trc.CanUse()) tgt.push_back(tID);
+    }
+  }
+  else {
+    for (int it=0;it<ntr;++it) {
+      int tID = src[it];
+      if (mVtxTracks[tID].CanUse(zmn,zmx)) tgt.push_back(tID);
+    }
+  }
+  
 }

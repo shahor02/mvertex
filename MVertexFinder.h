@@ -28,7 +28,9 @@ class MVertexFinder : public TObject
     float mWgh;         ///< track weight wrt current vertex seed
     short mVtxID;       ///< assigned vertex
     //
+    bool CanUse()                      const {return mVtxID==kNoVtx;}
     bool CanUse(float zmin,float zmax) const {return mVtxID==kNoVtx && mZ>zmin && mZ<zmax;}
+    bool operator < (const vtxTrack& trc) const {return mZ<trc.mZ;}
   };
 
   struct vertex {
@@ -62,9 +64,11 @@ class MVertexFinder : public TObject
  protected:
 
   void LRAttractors(const std::vector<vtxTrack> &tracks,float zmn,float zmx,float currZ,float zLR[2]) const;
+  void SelectFreeTracks(const std::vector<int> &src,std::vector<int> &tgt,float zmn,float zmx) const;
   
   std::vector<vtxTrack> mVtxTracks;           ///< container for input tracks
   std::vector<vertex> mVertices;              ///< container for found vertices
+  bool  mUseZSorting;                         ///< optionally presort tracks in Z
   int   mMaxVtxIter;                          ///< max number of iterations per vertex
   int   mMinTracksPerVtx;                     ///< min number of tracks per vertex
   float mMinChangeZ;                          ///< stop if Z changes by less than this amount
