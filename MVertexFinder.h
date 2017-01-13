@@ -44,7 +44,11 @@ class MVertexFinder : public TObject
   void Reset();
   bool FindVertices();
   bool FindNextVertex(std::vector<vtxTrack> &tracks,float zseed,float sigScale2Ini, float zmin,float zmax);
+  bool FindNextVertex(std::vector<int> &trcID,float zseed,float sigScale2Ini);
+
+  
   bool FitVertex(std::vector<vtxTrack> &tracks, vertex &vtx, float &scaleSigma2, bool fillError, float zmin=-999.f,float zmax=999.f);
+  bool FitVertex(std::vector<int> &trcITs, vertex &vtx, float &scaleSigma2, bool fillError);
   void AddTrack(float x,float y,float z,float sy2,float sz2, float syz, float snp, float tgl, float alp);
   void SetConstraint(float x,float y,float z);
   void SetConstraintError(float sy2,float sz2,float syz);
@@ -64,7 +68,9 @@ class MVertexFinder : public TObject
  protected:
 
   void LRAttractors(const std::vector<vtxTrack> &tracks,float zmn,float zmx,float currZ,float zLR[2]) const;
+  void LRAttractors(const std::vector<int> &trcID,float currZ, std::vector<int> tgt[2],float zLR[2]) const;
   void SelectFreeTracks(const std::vector<int> &src,std::vector<int> &tgt,float zmn,float zmx) const;
+  void DisableTracks(const std::vector<int> &src);  
   
   std::vector<vtxTrack> mVtxTracks;           ///< container for input tracks
   std::vector<vertex> mVertices;              ///< container for found vertices
@@ -87,5 +93,22 @@ class MVertexFinder : public TObject
   //
   ClassDef(MVertexFinder,1)
 };
+
+//______________________________________________
+inline void MVertexFinder::DisableTracks(const std::vector<int> &src)
+{
+  // flag tracks as disabled
+  int ntrAcc = 0;
+  for (int it=src.size();it--;) {
+    vtxTrack &trc = mVtxTracks[src[it]];
+    if (trc.CanUse() && trc.mWgh>0.f) {
+      trc.mVtxID = vtxTrack::kDiscarded; // flag as discarded
+      trc.mWgh = 0.f;
+      ntrAcc++; // tmp     
+    }
+  }
+  printf("Disabling %d tracks after failure\n",ntrAcc);
+}
+
 
 #endif
