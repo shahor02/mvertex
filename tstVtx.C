@@ -21,8 +21,8 @@ void tstVtx(int nv=1, int ntrMean=20, int nNoise=20)
 
   double spanZ = 4*sigVZ+meanV[2];
   if (!htg) {
-    htg = new TH1F("htg","",20*spanZ,-spanZ,spanZ);
-    htb = new TH1F("htb","",20*spanZ,-spanZ,spanZ);
+    htg = new TH1F("htg","",200*spanZ,-spanZ,spanZ);
+    htb = new TH1F("htb","",200*spanZ,-spanZ,spanZ);
     htg->SetLineColor(kRed); htg->SetMarkerColor(kRed);
     htb->SetLineColor(kBlue); htb->SetMarkerColor(kBlue);
   }

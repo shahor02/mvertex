@@ -80,7 +80,6 @@ class MVertexFinder : public TObject
   float mMinChangeZ;                          ///< stop if Z changes by less than this amount
   float mStopScaleChange;                     ///< stopping condition: max sigma2New/sigma2
   float mSigma2Accept;                        ///< stopping condition: acceptable Sigma2
-  float mSigma2Push;                          ///< trigger algo push if iterations stuck at sigma2 above this
   float mTukey2I;                             ///< 1./[Tukey parameter]^2
   float mZRange;                              ///< ZRange to accept
   float mVtxConstraint[3];                    ///< nominal vertex constraint

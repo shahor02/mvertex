@@ -23,7 +23,6 @@ MVertexFinder::MVertexFinder() :
   ,mMinChangeZ(10e-4f)
   ,mStopScaleChange(0.95)
   ,mSigma2Accept(3.0)
-  ,mSigma2Push(10.)
   ,mTukey2I(1./25.f)
   ,mZRange(30.0f)
 {
@@ -76,7 +75,6 @@ bool MVertexFinder::FindNextVertex(std::vector<MVertexFinder::vtxTrack> &tracks,
     }
     //
     if ( (sigRat<1.0f && sigRat>mStopScaleChange) || zChange<mMinChangeZ) { // sigma does not drop enough anymore, check convergence
-      //      if ((zChange<mMinChangeZ && scaleSigma2<mSigma2Push) || scaleSigma2<mSigma2Accept) { // converged, finalize the vertex
       if (zChange<mMinChangeZ && scaleSigma2<mSigma2Accept) { // converged, finalize the vertex	
 	printf("Converged in dZ or dSigmaChange, stop iterations\n");
 	finalize=true;
@@ -173,8 +171,8 @@ bool MVertexFinder::FindNextVertex(std::vector<int> &trcIDs,float zseed,float si
       break;
     }
     //
-    if ( (sigRat<1.0f && sigRat>mStopScaleChange) || zChange<mMinChangeZ) { // sigma does not drop enough anymore, check convergence
-      //      if ((zChange<mMinChangeZ && scaleSigma2<mSigma2Push) || scaleSigma2<mSigma2Accept) { // converged, finalize the vertex
+    // sigma does not drop enough anymore, check convergence
+    if ( (sigRat<1.0f && sigRat>mStopScaleChange) || (zChange<mMinChangeZ && scaleSigma2>10*mSigma2Accept)) { // recheck 10*...
       if (zChange<mMinChangeZ && scaleSigma2<mSigma2Accept) { // converged, finalize the vertex	
 	printf("Converged in dZ or dSigmaChange, stop iterations\n");
 	finalize=true;
