@@ -26,8 +26,8 @@ MVertexFinder::MVertexFinder() :
   ,mTukey2I(1./25.f)
   ,mZRange(30.0f)
 {
-  mVtxConstraint[0]=mVtxConstraint[1]=mVtxConstraint[2]=0.f;
-  mVtxConstrErr[0]=mVtxConstrErr[1]=mVtxConstrErr[2]=0.f;
+  mIRPos[0]=mIRPos[1]=mIRPos[2]=0.f;
+  mIRSig2[0]=mIRSig2[1]=mIRSig2[2]=0.f;
 }
 
 //______________________________________________
@@ -39,8 +39,8 @@ bool MVertexFinder::FindNextVertex(std::vector<MVertexFinder::vtxTrack> &tracks,
   printf("\nStarting at level %d : Zseed=%+e sg2=%e | %+e<Z<%e\n",level,zseed,sigScale2Ini,zmin,zmax);
   
   vertex vtx;
-  vtx.mXYZ[0] = mVtxConstraint[0];
-  vtx.mXYZ[1] = mVtxConstraint[1];
+  vtx.mXYZ[0] = mIRPos[0];
+  vtx.mXYZ[1] = mIRPos[1];
   vtx.mXYZ[2] = zseed;
   //
   int nIter = 0;
@@ -136,8 +136,8 @@ bool MVertexFinder::FindNextVertex(std::vector<int> &trcIDs,float zseed,float si
   printf("\nStarting at level %d : Zseed=%+e sg2=%e\n",level,zseed,sigScale2Ini);
   
   vertex vtx;
-  vtx.mXYZ[0] = mVtxConstraint[0];
-  vtx.mXYZ[1] = mVtxConstraint[1];
+  vtx.mXYZ[0] = mIRPos[0];
+  vtx.mXYZ[1] = mIRPos[1];
   vtx.mXYZ[2] = zseed;
   //
   int nIter = 0;
@@ -506,22 +506,6 @@ void MVertexFinder::AddTrack(float x,float y,float z,float sy2,float sz2, float 
   trc.mVtxID = vtxTrack::kNoVtx;
   mVtxTracks.push_back(trc);
   return;
-}
-
-//______________________________________________
-void MVertexFinder::SetConstraint(float x,float y,float z)
-{
-  mVtxConstraint[0] = x;
-  mVtxConstraint[1] = y;
-  mVtxConstraint[2] = z;
-}
-
-//______________________________________________
-void MVertexFinder::SetConstraintError(float sy2,float sz2,float syz)
-{
-  mVtxConstrErr[0] = sy2;
-  mVtxConstrErr[1] = sz2;
-  mVtxConstrErr[2] = syz;
 }
 
 //______________________________________________

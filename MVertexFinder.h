@@ -45,13 +45,15 @@ class MVertexFinder : public TObject
   bool FindVertices();
   bool FindNextVertex(std::vector<vtxTrack> &tracks,float zseed,float sigScale2Ini, float zmin,float zmax);
   bool FindNextVertex(std::vector<int> &trcID,float zseed,float sigScale2Ini);
-
   
   bool FitVertex(std::vector<vtxTrack> &tracks, vertex &vtx, float &scaleSigma2, bool fillError, float zmin=-999.f,float zmax=999.f);
   bool FitVertex(std::vector<int> &trcITs, vertex &vtx, float &scaleSigma2, bool fillError);
   void AddTrack(float x,float y,float z,float sy2,float sz2, float syz, float snp, float tgl, float alp);
-  void SetConstraint(float x,float y,float z);
-  void SetConstraintError(float sy2,float sz2,float syz);
+
+  /// Interaction region settings
+  void SetIRPos(float x=0.f,float y=0.f, float z=0.f);
+  void SetIRSig2(float sigY2=1.0f,float sigZ2=1.0f, float sigYZ=0.f);
+
   //
   void  SetMinChangeZ(float v)                     {mMinChangeZ = v;}
   float GetMinChangeZ() const                      {return mMinChangeZ;}
@@ -82,8 +84,8 @@ class MVertexFinder : public TObject
   float mSigma2Accept;                        ///< stopping condition: acceptable Sigma2
   float mTukey2I;                             ///< 1./[Tukey parameter]^2
   float mZRange;                              ///< ZRange to accept
-  float mVtxConstraint[3];                    ///< nominal vertex constraint
-  float mVtxConstrErr[3];                     ///< nominal vertex constraint errors
+  float mIRPos[3];                            ///< nominal vertex constraint
+  float mIRSig2[3];                           ///< nominal vertex constraint errors
   //
   static const float kDefTukey;               ///< def.value for tukey constant
   static const float kHugeF;                  ///< very large float
@@ -92,6 +94,23 @@ class MVertexFinder : public TObject
   //
   ClassDef(MVertexFinder,1)
 };
+
+//______________________________________________
+inline void MVertexFinder::SetIRPos(float x,float y, float z)
+{
+  /// set mean vertex position
+  mIRPos[0] = x;
+  mIRPos[1] = y;
+  mIRPos[2] = z;
+}
+
+//______________________________________________
+inline void MVertexFinder::SetIRSig2(float sgx2,float sgy2, float sgz2)
+{
+  mIRSig2[0] = sgx2;
+  mIRSig2[1] = sgy2;
+  mIRSig2[2] = sgz2;  
+}
 
 //______________________________________________
 inline void MVertexFinder::DisableTracks(const std::vector<int> &src)
