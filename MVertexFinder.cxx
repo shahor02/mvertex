@@ -371,6 +371,16 @@ bool MVertexFinder::FitVertex(std::vector<MVertexFinder::vtxTrack> &tracks, MVer
   vtx.mNTracks = ntAcc;
   if (ntAcc<mMinTracksPerVtx) return false;
   //
+  if (mUseConstraint) {
+    // impose meanVertex constraint, i.e. account terms (V_i-Constrain_i)^2/sig2constr_i for i=X,Y 
+    // in the fit chi2 definition
+    cxx += mIRSig2I[0];
+    cx0 += mIRSig2I[0]*mIRPos[0];
+    cyy += mIRSig2I[1];
+    cy0 += mIRSig2I[1]*mIRPos[1];
+    //    czz += mIRSig2I[2];             // don't constraint Z
+    //    cz0 += mIRSig2I[2]*mIRPos[2];
+  }
   AliSymMatrix mat(3);
   double vec[3] = {cx0,cy0,cz0};
   mat(0,0) = cxx;
@@ -471,7 +481,6 @@ bool MVertexFinder::FitVertex(std::vector<int> &trcIDs, MVertexFinder::vertex &v
     //    czz += mIRSig2I[2];             // don't constraint Z
     //    cz0 += mIRSig2I[2]*mIRPos[2];
   }
-  
   AliSymMatrix mat(3);
   double vec[3] = {cx0,cy0,cz0};
   mat(0,0) = cxx;
