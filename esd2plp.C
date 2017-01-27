@@ -8,10 +8,11 @@
 #include "AliExternalTrackParam.h"
 #include <TFile.h>
 #include <TTree.h>
+#include <TChain.h>
 #include <TSystem.h>
 #include <TRandom.h>
 #include <TGeoGlobalMagField.h>
-
+#include <fstream>
 #include "MVertexFinder.h"
 #endif
 
@@ -20,7 +21,6 @@ AliESDVertex diamond;
 double bz = 0.;
 
 
-TFile* flIn=0;
 AliESDEvent *esdEv=0;
 AliESDfriend *esdFr=0;
 TTree *esdTree = 0;
@@ -34,8 +34,8 @@ int CreatePileUpEvent(float nplp, int startEv=0, int stepEv=0, ULong_t flags=0);
 
 void PrintTrack(Int_t i);
 void PrintTracks();
-void ConnectFriends();
-Int_t LoadESD(const char* path,Bool_t friends=kFALSE);
+Bool_t LoadESD(const char* path);
+TChain* LoadChainESD(const char* inpData);
 Int_t LoadEvent(Int_t iev);
 Bool_t ResetEvent();
 void FetchESDData(int evID, ULong_t flags=0);
@@ -46,7 +46,7 @@ void InitVertexer(float zRange = 30.f);
 
 void testVtx()
 {
-  LoadESD("/data1/LHC14c2_p2/195483/001/AliESDs.root");
+  LoadESD("/home/shahoian/Downloads/alice/sim/2016/LHC16j7a/246392/9999/AliESDs.root");
   InitVertexer();
   int icurr = 0;
   icurr = CreatePileUpEvent(3,icurr, 1, 0x44);
@@ -101,7 +101,7 @@ int CreatePileUpEvent(float nuplp, int startEv, int stepEv, ULong_t flags)
   }
   printf("Will merge %d events starting from %d, step = %d\n",nPlp, startEv, stepEv);
   //
-  int evsRead[nPlp];
+  int evsRead[kMaxPlp]={0};
   int ev2read = startEv%nEvTot;
   //
   for (int iev=0;iev<nPlp;iev++) {
@@ -151,35 +151,60 @@ void FetchESDData(int evID, ULong_t flags)
   //
 }
 
-  
-//__________________________________________________
-Int_t LoadESD(const char* path,Bool_t friends)
+
+//_______________________________________________________
+TChain* LoadChainESD(const char* inpData)
 {
-  flIn = TFile::Open(path);
-  if (!flIn) {
-    printf("Failed to open %s\n",path);
-    return -1;
+  //
+  const char* chName="esdTree";
+  TChain* chain = new TChain(chName);
+  //
+  TString inpDtStr = inpData;
+  if (inpDtStr.EndsWith(".root")) {
+    chain->AddFile(inpData);
+  }
+  else {
+    //
+    ifstream inpf(inpData);
+    if (!inpf.good()) {
+      printf("Failed on input filename %s\n",inpData);
+      return 0;
+    }
+    //
+    TString flName;
+    flName.ReadLine(inpf);
+    while ( !flName.IsNull() ) {
+      flName = flName.Strip(TString::kBoth,' ');
+      if (flName.BeginsWith("//") || flName.BeginsWith("#")) {flName.ReadLine(inpf); continue;}
+      flName = flName.Strip(TString::kBoth,',');
+      flName = flName.Strip(TString::kBoth,'"');
+      printf("Adding %s\n",flName.Data());
+      chain->AddFile(flName.Data());
+      flName.ReadLine(inpf);
+    }
   }
   //
-  esdTree = (TTree*) flIn->Get("esdTree");
-  if (!esdTree) {
-    printf("No ESDtree found in %s\n",path);
-    return -1;
+  int n = chain->GetEntries();
+  if (n<1) {
+    printf("Obtained chain is empty\n");
+    return 0;
   }
-  //
-  printf("Loaded esdTree with %d entries\n",(int)esdTree->GetEntries());
+  else printf("Opened %s chain with %d entries\n",chName,n);
+  return chain;
+}
+
+//____________________________________
+Bool_t LoadESD(const char* path)
+{
+  if (!(esdTree = LoadChainESD(path))) return 0;
   esdEv = new AliESDEvent();
   esdEv->ReadFromTree(esdTree);
-  if (friends) ConnectFriends();
-  //  
-  return 0;
 }
 
 Bool_t ResetEvent()
 {
   if (!esdEv) return kFALSE; 
   esdEv->Reset();
-  if (esdFr) esdFr->Reset();
   return kTRUE;
 }
 
@@ -187,7 +212,6 @@ Int_t LoadEvent(Int_t iev)
 {
   if (!ResetEvent()) return -1;
   esdTree->GetEntry(iev);
-  if (esdFr) esdEv->SetESDfriend(esdFr);
   esdEv->ConnectTracks();
   if (!TGeoGlobalMagField::Instance()->GetField()) esdEv->InitMagneticField();
   //
@@ -229,30 +253,3 @@ void PrintTrack(Int_t i)
 	 tr->GetP(),p[0],p[1],p[2]);
 }
 
-
-void ConnectFriends()
-{
-  // Connect the friends tree as soon as available.
-  //
-  // Handle the friends first
-  //
-  if (!esdTree->FindBranch("ESDfriend.")) {
-    // Try to add ESDfriend. branch as friend
-      TString esdFriendTreeFName;
-      esdFriendTreeFName = (esdTree->GetCurrentFile())->GetName();    
-      TString basename = gSystem->BaseName(esdFriendTreeFName);
-      Int_t index = basename.Index("#")+1;
-      basename.Remove(index);
-      basename += "AliESDfriends.root";
-      TString dirname = gSystem->DirName(esdFriendTreeFName);
-      dirname += "/";
-      esdFriendTreeFName = dirname + basename;
-      //
-      TTree* cTree = esdTree->GetTree();
-      if (!cTree) cTree = esdTree;      
-      cTree->AddFriend("esdFriendTree", esdFriendTreeFName.Data());
-      cTree->SetBranchStatus("ESDfriend.", 1);
-      esdFr = (AliESDfriend*)(esdEv->FindListObject("AliESDfriend"));
-      if (esdFr) cTree->SetBranchAddress("ESDfriend.", &esdFr);
-  }
-}

@@ -53,7 +53,9 @@ class MVertexFinder : public TObject
   /// Interaction region settings
   void SetIRPos(float x=0.f,float y=0.f, float z=0.f);
   void SetIRSig2(float sigY2=1.0f,float sigZ2=1.0f, float sigYZ=0.f);
-
+  //
+  bool  GetUseConstraint() const                   {return mUseConstraint;}
+  void  SetUseConstraint(bool v=true)              {mUseConstraint = v;}
   //
   void  SetMinChangeZ(float v)                     {mMinChangeZ = v;}
   float GetMinChangeZ() const                      {return mMinChangeZ;}
@@ -70,13 +72,14 @@ class MVertexFinder : public TObject
  protected:
 
   void LRAttractors(const std::vector<vtxTrack> &tracks,float zmn,float zmx,float currZ,float zLR[2]) const;
-  void LRAttractors(const std::vector<int> &trcID,float currZ, std::vector<int> tgt[2],float zLR[2]) const;
+  bool LRAttractors(const std::vector<int> &trcID,float currZ, std::vector<int> tgt[2],float zLR[2]) const;
   void SelectFreeTracks(const std::vector<int> &src,std::vector<int> &tgt,float zmn,float zmx) const;
   void DisableTracks(const std::vector<int> &src);  
   
   std::vector<vtxTrack> mVtxTracks;           ///< container for input tracks
   std::vector<vertex> mVertices;              ///< container for found vertices
   bool  mUseZSorting;                         ///< optionally presort tracks in Z
+  bool  mUseConstraint;                       ///< impose mean-vertex constraint
   int   mMaxVtxIter;                          ///< max number of iterations per vertex
   int   mMinTracksPerVtx;                     ///< min number of tracks per vertex
   float mMinChangeZ;                          ///< stop if Z changes by less than this amount
@@ -85,7 +88,7 @@ class MVertexFinder : public TObject
   float mTukey2I;                             ///< 1./[Tukey parameter]^2
   float mZRange;                              ///< ZRange to accept
   float mIRPos[3];                            ///< nominal vertex constraint
-  float mIRSig2[3];                           ///< nominal vertex constraint errors
+  float mIRSig2I[3];                          ///< nominal vertex constraint inverted errors^2
   //
   static const float kDefTukey;               ///< def.value for tukey constant
   static const float kHugeF;                  ///< very large float
@@ -107,9 +110,9 @@ inline void MVertexFinder::SetIRPos(float x,float y, float z)
 //______________________________________________
 inline void MVertexFinder::SetIRSig2(float sgx2,float sgy2, float sgz2)
 {
-  mIRSig2[0] = sgx2;
-  mIRSig2[1] = sgy2;
-  mIRSig2[2] = sgz2;  
+  mIRSig2I[0] = sgx2>kAlmost0F ? 1.f/sgx2 : 0.f;
+  mIRSig2I[1] = sgy2>kAlmost0F ? 1.f/sgy2 : 0.f;
+  mIRSig2I[2] = sgz2>kAlmost0F ? 1.f/sgz2 : 0.f;  
 }
 
 //______________________________________________

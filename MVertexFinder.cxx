@@ -8,7 +8,7 @@ ClassImp(MVertexFinder)
 
 const float  MVertexFinder::kAlmost0F = 1e-12;
 const double MVertexFinder::kAlmost0D  = 1e-16;
-const float  MVertexFinder::kHugeF = 1e99;
+const float  MVertexFinder::kHugeF = 1.e12; //1.f/MVertexFinder::kAlmost0F;
 const float  MVertexFinder::kDefTukey = 5.0f;
 
 using namespace std;
@@ -18,6 +18,7 @@ MVertexFinder::MVertexFinder() :
   mVtxTracks()
   ,mVertices()
   ,mUseZSorting(true)
+  ,mUseConstraint(true)
   ,mMaxVtxIter(100)
   ,mMinTracksPerVtx(2)
   ,mMinChangeZ(10e-4f)
@@ -27,7 +28,7 @@ MVertexFinder::MVertexFinder() :
   ,mZRange(30.0f)
 {
   mIRPos[0]=mIRPos[1]=mIRPos[2]=0.f;
-  mIRSig2[0]=mIRSig2[1]=mIRSig2[2]=0.f;
+  mIRSig2I[0]=mIRSig2I[1]=mIRSig2I[2]=0.f;
 }
 
 //______________________________________________
@@ -182,14 +183,17 @@ bool MVertexFinder::FindNextVertex(std::vector<int> &trcIDs,float zseed,float si
 	float zLR[2]={0.f};
 	vector<int> trcIdsLR[2];
 	//
-	LRAttractors(trcIDs,vtx.mXYZ[2],trcIdsLR,zLR); // side to be discarded has zLR == 2*kHugeF
 	res = false;
-	//
-	//	for (int ilr=2;ilr--;) {
-	for (int ilr=0;ilr<2;ilr++) {
-	  if (zLR[ilr]>=kHugeF || int(trcIdsLR[ilr].size())<mMinTracksPerVtx) DisableTracks(trcIdsLR[ilr]);
-	  else res |= FindNextVertex(trcIdsLR[ilr],zLR[ilr],scaleSigma2);
+	if (LRAttractors(trcIDs,vtx.mXYZ[2],trcIdsLR,zLR)) { // split to 2 subsample at left/right of current vtx
+	  // side to be discarded has zLR == 2*kHugeF
+	  //	for (int ilr=2;ilr--;) {
+	  for (int ilr=0;ilr<2;ilr++) {
+	    if (zLR[ilr]>=kHugeF || int(trcIdsLR[ilr].size())<mMinTracksPerVtx) DisableTracks(trcIdsLR[ilr]);
+	    else res |= FindNextVertex(trcIdsLR[ilr],zLR[ilr],scaleSigma2);
+	  }
 	}
+	else DisableTracks(trcIDs); // splitting failed - abandon tracks in current sample
+	//
 	break; // stop looping around current seed
       }
       else { // did not converge, disable contributors
@@ -243,7 +247,7 @@ void MVertexFinder::LRAttractors(const std::vector<vtxTrack> &tracks,
 }
 
 //______________________________________________
-void MVertexFinder::LRAttractors(const std::vector<int> &src, float currZ,
+bool MVertexFinder::LRAttractors(const std::vector<int> &src, float currZ,
 				 std::vector<int> tgt[2],float zLR[2]) const
 {
   // find Z of attractors on the left and right from current Z
@@ -253,18 +257,26 @@ void MVertexFinder::LRAttractors(const std::vector<int> &src, float currZ,
   tgt[0].reserve(ntr);
   tgt[1].reserve(ntr);  
   //
-  for (int itr=0;itr<ntr;itr++) {
+  for (int itr=ntr;itr--;) {
     int idx = src[itr];
     const vtxTrack &trc = mVtxTracks[idx];
-    int side = (trc.mZ<currZ) ? 0 : 1; // to the left and right of current vertex ?
-    tgt[side].push_back(idx);
     if (trc.mWgh>0.f) { // track has non-0 weight wrt vtx seed
+      int side = (trc.mZ<currZ) ? 0 : 1; // to the left and right of current vertex ?
+      tgt[side].push_back(idx);
       wghLR[side] += trc.mWgh;
       zLR[side] += trc.mWgh*trc.mZ;      
     }
   }
-  for (int is=2;is--;) zLR[is] = wghLR[is]>kAlmost0F ? zLR[is]/wghLR[is] : 2.f*kHugeF;
+  bool splitOK = true;
+  for (int is=2;is--;) {
+    if (wghLR[is]>kAlmost0F) zLR[is] = zLR[is]/wghLR[is];
+    else {
+      zLR[is] = 2.f*kHugeF;
+      splitOK = false;
+    }
+  }
   printf("Split to Zl=%+e (Ntr=%ld)  Zr=%+e (Ntr=%ld)\n",zLR[0],tgt[0].size(), zLR[1],tgt[1].size());
+  return splitOK;
 }
 
 //______________________________________________
@@ -357,7 +369,7 @@ bool MVertexFinder::FitVertex(std::vector<MVertexFinder::vtxTrack> &tracks, MVer
   }
   //
   vtx.mNTracks = ntAcc;
-  if (ntAcc<2) return false;
+  if (ntAcc<mMinTracksPerVtx) return false;
   //
   AliSymMatrix mat(3);
   double vec[3] = {cx0,cy0,cz0};
@@ -447,8 +459,19 @@ bool MVertexFinder::FitVertex(std::vector<int> &trcIDs, MVertexFinder::vertex &v
   }
   //
   vtx.mNTracks = ntAcc;
-  if (ntAcc<2) return false;
+  if (ntAcc<mMinTracksPerVtx) return false;
   //
+  if (mUseConstraint) {
+    // impose meanVertex constraint, i.e. account terms (V_i-Constrain_i)^2/sig2constr_i for i=X,Y 
+    // in the fit chi2 definition
+    cxx += mIRSig2I[0];
+    cx0 += mIRSig2I[0]*mIRPos[0];
+    cyy += mIRSig2I[1];
+    cy0 += mIRSig2I[1]*mIRPos[1];
+    //    czz += mIRSig2I[2];             // don't constraint Z
+    //    cz0 += mIRSig2I[2]*mIRPos[2];
+  }
+  
   AliSymMatrix mat(3);
   double vec[3] = {cx0,cy0,cz0};
   mat(0,0) = cxx;
