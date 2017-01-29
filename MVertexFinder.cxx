@@ -400,7 +400,7 @@ bool MVertexFinder::FitVertex(std::vector<MVertexFinder::vtxTrack> &tracks, MVer
     vtx.mCov[4] = mat(1,2);
     vtx.mCov[5] = mat(2,2);
     vtx.mNTracks = ntAcc;
-    vtx.mChi2 = 2.f*wghSum/scaleSig2ITuk2I;         // calculate chi^2
+    vtx.mChi2 = 2.f*(1.f-wghSum)/scaleSig2ITuk2I;         // calculate chi^2
   }
   scaleSigma2 = wghChi2/wghSum;
   return true;
@@ -501,7 +501,7 @@ bool MVertexFinder::FitVertex(std::vector<int> &trcIDs, MVertexFinder::vertex &v
     vtx.mCov[4] = mat(1,2);
     vtx.mCov[5] = mat(2,2);
     vtx.mNTracks = ntAcc;
-    vtx.mChi2 = 2.f*wghSum/scaleSig2ITuk2I;        // calculate chi^2
+    vtx.mChi2 = 2.f*(1.f-wghSum)/scaleSig2ITuk2I;        // calculate chi^2
   }
   scaleSigma2 = wghChi2/wghSum;
   return true;
