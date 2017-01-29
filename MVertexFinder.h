@@ -14,7 +14,7 @@ class MVertexFinder : public TObject
 	extrapolation Y=mY+mTgP*(x-mX) and Z=mZ+mTgL*(x-mX) is precise
     */
     enum {kUsed, kNoVtx=-1,kDiscarded=kNoVtx-1};
-    
+    unsigned int mStamp;///< track stamp (time, event id, etc)
     float mX;           ///< reference X
     float mY;           ///< Y at X
     float mZ;           ///< Z at X
@@ -36,8 +36,10 @@ class MVertexFinder : public TObject
   struct vertex {
     float mXYZ[3];      ///< vertex position
     float mCov[6];      ///< sym.cov. matrix in lower triangle representation
+    float mChi2;        ///< total chi^2
     int   mNTracks;     ///< number of tracks associated
-  vertex() : /*mXYZ{0.f},mCov{0.f},*/mNTracks(0) { memset(this,0,sizeof(vertex));}
+    unsigned int mStamp;///< vertex stamp (time, event id, etc)
+  vertex() : /*mXYZ{0.f},mCov{0.f},*/mChi2(0.f),mNTracks(0),mStamp(0) { memset(this,0,sizeof(vertex));}
   };
   
   MVertexFinder();
@@ -48,7 +50,7 @@ class MVertexFinder : public TObject
   
   bool FitVertex(std::vector<vtxTrack> &tracks, vertex &vtx, float &scaleSigma2, bool fillError, float zmin=-999.f,float zmax=999.f);
   bool FitVertex(std::vector<int> &trcITs, vertex &vtx, float &scaleSigma2, bool fillError);
-  void AddTrack(float x,float y,float z,float sy2,float sz2, float syz, float snp, float tgl, float alp);
+  void AddTrack(float x,float y,float z,float sy2,float sz2, float syz, float snp, float tgl, float alp, unsigned int stamp=0);
 
   /// Interaction region settings
   void SetIRPos(float x=0.f,float y=0.f, float z=0.f);

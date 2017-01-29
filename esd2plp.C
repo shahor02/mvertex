@@ -83,7 +83,7 @@ void AttachToVertexer()
     if (!trc->PropagateToDCA(&diamond,bz, 0.3, dca, dcaCov)) continue;
     vtf->AddTrack(trc->GetX(),trc->GetY(),trc->GetZ(),
 		  trc->GetSigmaY2(), trc->GetSigmaZ2(), trc->GetSigmaZY(), 
-		  trc->GetSnp(), trc->GetTgl(), trc->GetAlpha());
+		  trc->GetSnp(), trc->GetTgl(), trc->GetAlpha(), trc->GetUniqueID());
   }
 }
 

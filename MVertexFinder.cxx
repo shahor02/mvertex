@@ -314,7 +314,7 @@ bool MVertexFinder::FitVertex(std::vector<MVertexFinder::vtxTrack> &tracks, MVer
   //
   double wghSum=0,wghChi2=0; 
   double cxx=0,cxy=0,cxz=0,cx0=0,cyy=0,cyz=0,cy0=0,czz=0,cz0=0;
-  float scaleSig2I = 1.f/scaleSigma2;
+  float scaleSig2ITuk2I = mTukey2I/scaleSigma2;
   //
   for (int itr=ntr;itr--;) {
     vtxTrack &trc = tracks[itr];
@@ -330,7 +330,7 @@ bool MVertexFinder::FitVertex(std::vector<MVertexFinder::vtxTrack> &tracks, MVer
     // weighted distance to vertex
     float syyI(trc.mSig2YI),szzI(trc.mSig2ZI),syzI(trc.mSigYZI);
     float chi2T = 0.5f*(dy*dy*syyI + dz*dz*szzI) + dy*dz*syzI;
-    float wghT = (1.f-chi2T*mTukey2I*scaleSig2I);
+    float wghT = (1.f-chi2T*scaleSig2ITuk2I);
     if (wghT<kAlmost0F)  {
       trc.mWgh = 0.f;
       continue;
@@ -400,6 +400,7 @@ bool MVertexFinder::FitVertex(std::vector<MVertexFinder::vtxTrack> &tracks, MVer
     vtx.mCov[4] = mat(1,2);
     vtx.mCov[5] = mat(2,2);
     vtx.mNTracks = ntAcc;
+    vtx.mChi2 = 2.f*wghSum/scaleSig2ITuk2I;         // calculate chi^2
   }
   scaleSigma2 = wghChi2/wghSum;
   return true;
@@ -414,7 +415,7 @@ bool MVertexFinder::FitVertex(std::vector<int> &trcIDs, MVertexFinder::vertex &v
   //
   double wghSum=0,wghChi2=0; 
   double cxx=0,cxy=0,cxz=0,cx0=0,cyy=0,cyz=0,cy0=0,czz=0,cz0=0;
-  float scaleSig2I = 1.f/scaleSigma2;
+  float scaleSig2ITuk2I = mTukey2I/scaleSigma2;
   //
   for (int itr=ntr;itr--;) {
     vtxTrack &trc = mVtxTracks[trcIDs[itr]];
@@ -430,7 +431,7 @@ bool MVertexFinder::FitVertex(std::vector<int> &trcIDs, MVertexFinder::vertex &v
     // weighted distance to vertex
     float syyI(trc.mSig2YI),szzI(trc.mSig2ZI),syzI(trc.mSigYZI);
     float chi2T = 0.5f*(dy*dy*syyI + dz*dz*szzI) + dy*dz*syzI;
-    float wghT = (1.f-chi2T*mTukey2I*scaleSig2I);
+    float wghT = (1.f-chi2T*scaleSig2ITuk2I);
     if (wghT<kAlmost0F)  {
       trc.mWgh = 0.f;
       continue;
@@ -500,6 +501,7 @@ bool MVertexFinder::FitVertex(std::vector<int> &trcIDs, MVertexFinder::vertex &v
     vtx.mCov[4] = mat(1,2);
     vtx.mCov[5] = mat(2,2);
     vtx.mNTracks = ntAcc;
+    vtx.mChi2 = 2.f*wghSum/scaleSig2ITuk2I;        // calculate chi^2
   }
   scaleSigma2 = wghChi2/wghSum;
   return true;
@@ -513,7 +515,8 @@ void MVertexFinder::Reset()
 }
 
 //______________________________________________
-void MVertexFinder::AddTrack(float x,float y,float z,float sy2,float sz2, float syz, float snp, float tgl, float alp)
+void MVertexFinder::AddTrack(float x,float y,float z,float sy2,float sz2, float syz, float snp, float tgl, float alp,
+			     unsigned int stamp)
 {
   // add new track to the pool
   float cs = (1.f-snp)*(1.f+snp);
@@ -524,6 +527,7 @@ void MVertexFinder::AddTrack(float x,float y,float z,float sy2,float sz2, float 
   //
   vtxTrack trc;
   //
+  trc.mStamp = stamp;
   trc.mTgP = snp/sqrtf(cs);
   trc.mTgL = tgl;
   trc.mX = x;
@@ -547,7 +551,8 @@ void MVertexFinder::PrintVertices() const
   int nv = mVertices.size();
   for (int iv=0;iv<nv;iv++) {
     const vertex& vtx = mVertices[iv];
-    printf("#%2d %+e %+e %+e | Ntracks = %d\n",iv,vtx.mXYZ[0],vtx.mXYZ[1],vtx.mXYZ[2],vtx.mNTracks);
+    printf("#%2d %+e %+e %+e | Ntracks = %4d | Chi2/ntr = %7.2f | Stamp: %d\n",
+	   iv,vtx.mXYZ[0],vtx.mXYZ[1],vtx.mXYZ[2],vtx.mNTracks,vtx.mChi2/vtx.mNTracks,vtx.mStamp);
     int id = 0;
     for (int ie=0;ie<3;ie++) {printf("    "); for (int je=ie;je<3;je++) printf("%+e ",vtx.mCov[id++]); printf("\n");}
   }
