@@ -46,7 +46,7 @@ void InitVertexer(float zRange = 30.f);
 
 void testVtx()
 {
-  LoadESD("/home/shahoian/Downloads/alice/sim/2016/LHC16j7a/246392/9999/AliESDs.root");
+  LoadESD("/data/mcdata/pbpb_LHC16g1/246994/001/AliESDs.root");
   InitVertexer();
   int icurr = 0;
   icurr = CreatePileUpEvent(3,icurr, 1, 0x44);
@@ -145,7 +145,7 @@ void FetchESDData(int evID, ULong_t flags)
     // fiducial cut on DCA
     if (TMath::Abs(trc->GetX())>2 || TMath::Abs(trc->GetY())>2) continue;
     AliExternalTrackParam* tradd = new(aliceTracks[ntrPlp++]) AliExternalTrackParam(*trc);
-    UInt_t stamp = evID; // to complete
+    UInt_t stamp = evID+1; // to complete
     tradd->SetUniqueID(stamp);
   }
   //

@@ -19,6 +19,9 @@ MVertexFinder::MVertexFinder() :
   ,mVertices()
   ,mUseZSorting(true)
   ,mUseConstraint(true)
+
+  ,mRemovedTracks(0)
+  
   ,mMaxVtxIter(100)
   ,mMinTracksPerVtx(2)
   ,mMinChangeZ(10e-4f)
@@ -66,8 +69,9 @@ bool MVertexFinder::FindNextVertex(std::vector<MVertexFinder::vtxTrack> &tracks,
     float zChange = fabs(vtx.mXYZ[2] - oldZ);
     //
     float sigRat = scaleSigma2/scaleSigma2Old;
-    printf("<<#%3d Ntacc:%4d Vtx: %+e %+e %+e Sig:%f -> %f %f (Dz:%+.4f)\n",nIter,vtx.mNTracks, vtx.mXYZ[0],vtx.mXYZ[1],vtx.mXYZ[2],
-	   scaleSigma2Old,scaleSigma2,sigRat,zChange);
+    printf("<<#%3d Ntacc:%4d Vtx: %+e %+e %+e Sig:%f -> %f %f (Dz:%+.4f) Stamp: %d\n",
+	   nIter,vtx.mNTracks, vtx.mXYZ[0],vtx.mXYZ[1],vtx.mXYZ[2],
+	   scaleSigma2Old,scaleSigma2,sigRat,zChange,vtx.mStamp);
     //
     if (scaleSigma2<1.f) {
       printf("sigmaScale went below min., stop iterations\n");
@@ -104,7 +108,10 @@ bool MVertexFinder::FindNextVertex(std::vector<MVertexFinder::vtxTrack> &tracks,
       mVertices.push_back(vtx);
       for (int itr=ntr;itr--;) {	
 	vtxTrack &trc = tracks[itr];
-	if (trc.CanUse(zmin,zmax) && trc.mWgh>0.f) trc.mVtxID = vID; 
+	if (trc.CanUse(zmin,zmax) && trc.mWgh>0.f) {
+	  trc.mVtxID = vID;
+	  mRemovedTracks++;
+	}
       }
     }
   }
@@ -115,7 +122,8 @@ bool MVertexFinder::FindNextVertex(std::vector<MVertexFinder::vtxTrack> &tracks,
       if (trc.CanUse(zmin,zmax) && trc.mWgh>0.f) {
 	trc.mVtxID = vtxTrack::kDiscarded; // flag as discarded
 	trc.mWgh = 0.f;
-	ntrAcc++; // tmp     
+	ntrAcc++; // tmp
+	mRemovedTracks++;
       }
     }
     printf("Disabling %d tracks after failure\n",ntrAcc);
@@ -163,8 +171,8 @@ bool MVertexFinder::FindNextVertex(std::vector<int> &trcIDs,float zseed,float si
     float zChange = fabs(vtx.mXYZ[2] - oldZ);
     //
     float sigRat = scaleSigma2/scaleSigma2Old;
-    printf("<<#%3d Ntacc:%4d Vtx: %+e %+e %+e Sig:%f -> %f %f (Dz:%+.4f)\n",nIter,vtx.mNTracks, vtx.mXYZ[0],vtx.mXYZ[1],vtx.mXYZ[2],
-	   scaleSigma2Old,scaleSigma2,sigRat,zChange);
+    printf("<<#%3d Ntacc:%4d Vtx: %+e %+e %+e Sig:%f -> %f %f (Dz:%+.4f) | Stamp: %d\n",nIter,vtx.mNTracks, vtx.mXYZ[0],vtx.mXYZ[1],vtx.mXYZ[2],
+	   scaleSigma2Old,scaleSigma2,sigRat,zChange,vtx.mStamp);
     //
     if (scaleSigma2<1.f) {
       printf("sigmaScale went below min., stop iterations\n");
@@ -173,7 +181,8 @@ bool MVertexFinder::FindNextVertex(std::vector<int> &trcIDs,float zseed,float si
     }
     //
     // sigma does not drop enough anymore, check convergence
-    if ( (sigRat<1.0f && sigRat>mStopScaleChange) || (zChange<mMinChangeZ && scaleSigma2>10*mSigma2Accept)) { // recheck 10*...
+    if ( (sigRat<1.0f && sigRat>mStopScaleChange) ||
+	 (zChange<mMinChangeZ && scaleSigma2>10*mSigma2Accept && sigRat>mStopScaleChange)) { // recheck 10*...
       if (zChange<mMinChangeZ && scaleSigma2<mSigma2Accept) { // converged, finalize the vertex	
 	printf("Converged in dZ or dSigmaChange, stop iterations\n");
 	finalize=true;
@@ -211,7 +220,10 @@ bool MVertexFinder::FindNextVertex(std::vector<int> &trcIDs,float zseed,float si
       mVertices.push_back(vtx);
       for (int itr=ntr;itr--;) {	
 	vtxTrack &trc = mVtxTracks[trcIDs[itr]];              // don't use CanUse(zmn,zmx) version: z-range guaranteed 
-	if (trc.CanUse() && trc.mWgh>0.f) trc.mVtxID = vID;   // when vector if track indices is used
+	if (trc.CanUse() && trc.mWgh>0.f) {
+	  trc.mVtxID = vID;   // when vector if track indices is used
+	  mRemovedTracks++;
+	}
       }
     }
   }
@@ -283,8 +295,8 @@ bool MVertexFinder::LRAttractors(const std::vector<int> &src, float currZ,
 bool MVertexFinder::FindVertices()
 {
   int ntr = mVtxTracks.size();
-  if (ntr<2) return false;
-
+  if (ntr<mMinTracksPerVtx) return false;
+  mRemovedTracks = 0;
   if (mUseZSorting) sort(mVtxTracks.begin(),mVtxTracks.end());
   
   const float zresChar = 200e-4; // characteristic Z resolution
@@ -299,7 +311,7 @@ bool MVertexFinder::FindVertices()
     trcIDs.clear();
     for (int itr=0;itr<ntr;itr++) if (mVtxTracks[itr].CanUse()) trcIDs.push_back(itr);
     PrintTracks();
-  } while (FindNextVertex( trcIDs, zini, sig2ini));
+  } while (FindNextVertex( trcIDs, zini, sig2ini) || (ntr-mRemovedTracks)>=mMinTracksPerVtx);
   
     
 }
@@ -318,7 +330,7 @@ bool MVertexFinder::FitVertex(std::vector<MVertexFinder::vtxTrack> &tracks, MVer
   //
   for (int itr=ntr;itr--;) {
     vtxTrack &trc = tracks[itr];
-    if (!trc.CanUse(zmin,zmax)) continue; // the track is invalidated or out of range, skip
+    if (!trc.CanUse(zmin,zmax) || !CheckVertexTrackStamps(vtx,trc)) continue; // the track is invalidated or out of range, skip
     // determine weight of the track
     // current vertex in the track proper frame
     float vlocX =  curVtx[0]*trc.mCosAlp+curVtx[1]*trc.mSinAlp;
@@ -419,7 +431,7 @@ bool MVertexFinder::FitVertex(std::vector<int> &trcIDs, MVertexFinder::vertex &v
   //
   for (int itr=ntr;itr--;) {
     vtxTrack &trc = mVtxTracks[trcIDs[itr]];
-    if (!trc.CanUse()) continue; // the track is invalidated or out of range, skip
+    if (!trc.CanUse() || !CheckVertexTrackStamps(vtx,trc)) continue; // the track is invalidated or out of range, skip
     // determine weight of the track
     // current vertex in the track proper frame
     float vlocX =  curVtx[0]*trc.mCosAlp+curVtx[1]*trc.mSinAlp;
@@ -563,9 +575,10 @@ void MVertexFinder::PrintTracks() const
 {
   ///< print tracks
   int nt = mVtxTracks.size();
+  printf("Ntracks = %5d Nremoved = %5d\n",nt,mRemovedTracks);
   for (int it=0;it<nt;it++) {
     const vtxTrack &trc = mVtxTracks[it];
-    printf("#%4d Z:%+e W:%+e tgL:%+5.2f | Vtx: = %d\n",it,trc.mZ, trc.mWgh, trc.mTgL, trc.mVtxID);
+    printf("#%4d Z:%+e W:%+e tgL:%+5.2f | Vtx: = %3d | Stamp: %d\n",it,trc.mZ,trc.mWgh,trc.mTgL,trc.mVtxID,trc.mStamp);
   }
 }
 
@@ -604,3 +617,20 @@ void MVertexFinder::SelectFreeTracks(const std::vector<int> &src,
   
 }
 
+//______________________________________________
+bool MVertexFinder::CheckVertexTrackStamps(vertex& vtx, const vtxTrack& trc)
+{
+  // check if vertex and track track-stamps are compatible. Undefined time-stamp is
+  // compatible with both defined and undefined ones, but only defined track stamp
+  // may enforce the vertex time stamp
+  bool res = true;
+  //  return res;
+  //
+  if (IsStampDefined(trc.mStamp)) {
+    if (IsStampDefined(vtx.mStamp)) res = trc.mStamp==vtx.mStamp; // at the moment require compatibility as strict equality
+    else vtx.mStamp = trc.mStamp; //  track will set its stamp to the vertex
+  }
+  // undefined track-stamp is compatible with any vertex stamp...
+  return  res;
+  //
+}

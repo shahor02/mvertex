@@ -52,6 +52,9 @@ class MVertexFinder : public TObject
   bool FitVertex(std::vector<int> &trcITs, vertex &vtx, float &scaleSigma2, bool fillError);
   void AddTrack(float x,float y,float z,float sy2,float sz2, float syz, float snp, float tgl, float alp, unsigned int stamp=0);
 
+  bool CheckVertexTrackStamps(vertex& vtx, const vtxTrack& trc);
+  bool IsStampDefined(UInt_t stamp) const {return stamp;}
+  
   /// Interaction region settings
   void SetIRPos(float x=0.f,float y=0.f, float z=0.f);
   void SetIRSig2(float sigY2=1.0f,float sigZ2=1.0f, float sigYZ=0.f);
@@ -82,6 +85,8 @@ class MVertexFinder : public TObject
   std::vector<vertex> mVertices;              ///< container for found vertices
   bool  mUseZSorting;                         ///< optionally presort tracks in Z
   bool  mUseConstraint;                       ///< impose mean-vertex constraint
+
+  int   mRemovedTracks;                       ///< number of tracks removed from the pool
   int   mMaxVtxIter;                          ///< max number of iterations per vertex
   int   mMinTracksPerVtx;                     ///< min number of tracks per vertex
   float mMinChangeZ;                          ///< stop if Z changes by less than this amount
@@ -127,7 +132,8 @@ inline void MVertexFinder::DisableTracks(const std::vector<int> &src)
     if (trc.CanUse() && trc.mWgh>0.f) {
       trc.mVtxID = vtxTrack::kDiscarded; // flag as discarded
       trc.mWgh = 0.f;
-      ntrAcc++; // tmp     
+      ntrAcc++; // tmp
+      mRemovedTracks++;
     }
   }
   printf("Disabling %d tracks after failure\n",ntrAcc);
