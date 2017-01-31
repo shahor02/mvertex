@@ -19,13 +19,13 @@ MVertexFinder::MVertexFinder() :
   ,mVertices()
   ,mUseZSorting(true)
   ,mUseConstraint(true)
-
+  ,mCheckStamps(true)
   ,mRemovedTracks(0)
   
   ,mMaxVtxIter(100)
   ,mMinTracksPerVtx(2)
-  ,mMinChangeZ(10e-4f)
-  ,mStopScaleChange(0.95)
+  ,mMinChangeD(2.e-4)
+  ,mStopScaleChange(0.95f)
   ,mSigma2Accept(3.0)
   ,mTukey2I(1./25.f)
   ,mZRange(30.0f)
@@ -56,36 +56,40 @@ bool MVertexFinder::FindNextVertex(std::vector<MVertexFinder::vtxTrack> &tracks,
   }
   //
   float scaleSigma2 = sigScale2Ini;
+  float minChange2 = mMinChangeD*mMinChangeD;
 
   bool res = false, finalize = false;
   while(nIter++<mMaxVtxIter) {
     //
     printf(">>#%3d Ntr:%4d Vtx: %+e %+e %+e Sig: %f\n",nIter,ntr, vtx.mXYZ[0],vtx.mXYZ[1],vtx.mXYZ[2], scaleSigma2);
     //
-    float scaleSigma2Old = scaleSigma2, oldZ = vtx.mXYZ[2];
+    float scaleSigma2Old = scaleSigma2, oldXYZ[3]={vtx.mXYZ[0],vtx.mXYZ[1],vtx.mXYZ[2]};
     res = FitVertex(tracks,vtx, scaleSigma2, false, zmin, zmax); // fit with current seed and scaling sigma
     if (!res) break;
-
-    float zChange = fabs(vtx.mXYZ[2] - oldZ);
+    float dist2 = 0;
+    for (int j=3;j--;) {float d=oldXYZ[j]-vtx.mXYZ[j]; dist2 += d*d;};
     //
     float sigRat = scaleSigma2/scaleSigma2Old;
-    printf("<<#%3d Ntacc:%4d Vtx: %+e %+e %+e Sig:%f -> %f %f (Dz:%+.4f) Stamp: %d\n",
-	   nIter,vtx.mNTracks, vtx.mXYZ[0],vtx.mXYZ[1],vtx.mXYZ[2],
-	   scaleSigma2Old,scaleSigma2,sigRat,zChange,vtx.mStamp);
-    //
+    printf("<<#%3d Ntacc:%4d Vtx: %+e %+e %+e Sig:%f -> %f %f (D:%+.4f) | Stamp: %d\n",nIter,vtx.mNTracks, vtx.mXYZ[0],vtx.mXYZ[1],vtx.mXYZ[2],
+	   scaleSigma2Old,scaleSigma2,sigRat,sqrtf(dist2),vtx.mStamp);
+   //
     if (scaleSigma2<1.f) {
       printf("sigmaScale went below min., stop iterations\n");
       finalize=true;
       break;
     }
+    if (dist2<minChange2 && scaleSigma2<mSigma2Accept) {
+      printf("Converged in dZ or dSigmaChange, stop iterations\n");
+      finalize=true;
+      break;
+    }
     //
-    if ( (sigRat<1.0f && sigRat>mStopScaleChange) || zChange<mMinChangeZ) { // sigma does not drop enough anymore, check convergence
-      if (zChange<mMinChangeZ && scaleSigma2<mSigma2Accept) { // converged, finalize the vertex	
-	printf("Converged in dZ or dSigmaChange, stop iterations\n");
-	finalize=true;
-	break;
-      }
-      else if (vtx.mNTracks>mMinTracksPerVtx) { // stuck between 2 attractors?
+    //  check convergence   
+    if ( (sigRat<1.0f && sigRat>mStopScaleChange) ||        // sigma drops but not strong enough
+	 (dist2<minChange2 && scaleSigma2>10*mSigma2Accept && sigRat>mStopScaleChange*0.5f) // vertex almost does not move but sigma is large
+	 ) { // recheck factors...
+      
+      if (vtx.mNTracks>mMinTracksPerVtx) { // stuck between 2 attractors?
 	float zLR[2]={0.f};
 	res = false;
 	LRAttractors(tracks,zmin,zmax,vtx.mXYZ[2],zLR); // side to be discarded has zLR == kHugeF (>> than zmax)
@@ -158,37 +162,40 @@ bool MVertexFinder::FindNextVertex(std::vector<int> &trcIDs,float zseed,float si
   }
   //
   float scaleSigma2 = sigScale2Ini;
-
+  float minChange2 = mMinChangeD*mMinChangeD;
+  
   bool res = false, finalize = false;
   while(nIter++<mMaxVtxIter) {
     //
     printf(">>#%3d Ntr:%4d Vtx: %+e %+e %+e Sig: %f\n",nIter,ntr, vtx.mXYZ[0],vtx.mXYZ[1],vtx.mXYZ[2], scaleSigma2);
     //
-    float scaleSigma2Old = scaleSigma2, oldZ = vtx.mXYZ[2];
+    float scaleSigma2Old = scaleSigma2, oldXYZ[3]={vtx.mXYZ[0],vtx.mXYZ[1],vtx.mXYZ[2]};
     res = FitVertex(trcIDs,vtx, scaleSigma2, false); // fit with current seed and scaling sigma
     if (!res) break;
-
-    float zChange = fabs(vtx.mXYZ[2] - oldZ);
+    float dist2 = 0;
+    for (int j=3;j--;) {float d=oldXYZ[j]-vtx.mXYZ[j]; dist2 += d*d;};
     //
     float sigRat = scaleSigma2/scaleSigma2Old;
-    printf("<<#%3d Ntacc:%4d Vtx: %+e %+e %+e Sig:%f -> %f %f (Dz:%+.4f) | Stamp: %d\n",nIter,vtx.mNTracks, vtx.mXYZ[0],vtx.mXYZ[1],vtx.mXYZ[2],
-	   scaleSigma2Old,scaleSigma2,sigRat,zChange,vtx.mStamp);
+    printf("<<#%3d Ntacc:%4d Vtx: %+e %+e %+e Sig:%f -> %f %f (D:%+.4f) | Stamp: %d\n",nIter,vtx.mNTracks, vtx.mXYZ[0],vtx.mXYZ[1],vtx.mXYZ[2],
+	   scaleSigma2Old,scaleSigma2,sigRat,sqrtf(dist2),vtx.mStamp);
     //
     if (scaleSigma2<1.f) {
       printf("sigmaScale went below min., stop iterations\n");
       finalize=true;
       break;
     }
+    if (dist2<minChange2 && scaleSigma2<mSigma2Accept) {
+      printf("Converged in dZ or dSigmaChange, stop iterations\n");
+      finalize=true;
+      break;
+    }
     //
-    // sigma does not drop enough anymore, check convergence
-    if ( (sigRat<1.0f && sigRat>mStopScaleChange) ||
-	 (zChange<mMinChangeZ && scaleSigma2>10*mSigma2Accept && sigRat>mStopScaleChange)) { // recheck 10*...
-      if (zChange<mMinChangeZ && scaleSigma2<mSigma2Accept) { // converged, finalize the vertex	
-	printf("Converged in dZ or dSigmaChange, stop iterations\n");
-	finalize=true;
-	break;
-      }
-      else if (vtx.mNTracks>mMinTracksPerVtx) { // stuck between 2 attractors?
+    //  check convergence
+    if ( (sigRat<1.0f && sigRat>mStopScaleChange) ||        // sigma drops but not strong enough
+	 (dist2<minChange2 && scaleSigma2>10*mSigma2Accept && sigRat>mStopScaleChange*0.5f) // vertex almost does not move but sigma is large
+	 ) { // recheck factors...
+      
+      if (vtx.mNTracks>mMinTracksPerVtx) { // stuck between 2 attractors?
 	float zLR[2]={0.f};
 	vector<int> trcIdsLR[2];
 	//
@@ -330,7 +337,8 @@ bool MVertexFinder::FitVertex(std::vector<MVertexFinder::vtxTrack> &tracks, MVer
   //
   for (int itr=ntr;itr--;) {
     vtxTrack &trc = tracks[itr];
-    if (!trc.CanUse(zmin,zmax) || !CheckVertexTrackStamps(vtx,trc)) continue; // the track is invalidated or out of range, skip
+    if (!trc.CanUse(zmin,zmax) ||
+	(mCheckStamps && !CheckVertexTrackStamps(vtx,trc))) continue; // the track is invalidated or out of range, skip
     // determine weight of the track
     // current vertex in the track proper frame
     float vlocX =  curVtx[0]*trc.mCosAlp+curVtx[1]*trc.mSinAlp;
@@ -431,7 +439,8 @@ bool MVertexFinder::FitVertex(std::vector<int> &trcIDs, MVertexFinder::vertex &v
   //
   for (int itr=ntr;itr--;) {
     vtxTrack &trc = mVtxTracks[trcIDs[itr]];
-    if (!trc.CanUse() || !CheckVertexTrackStamps(vtx,trc)) continue; // the track is invalidated or out of range, skip
+    if (!trc.CanUse() ||
+	(mCheckStamps && !CheckVertexTrackStamps(vtx,trc))) continue; // the track is invalidated or out of range, skip
     // determine weight of the track
     // current vertex in the track proper frame
     float vlocX =  curVtx[0]*trc.mCosAlp+curVtx[1]*trc.mSinAlp;

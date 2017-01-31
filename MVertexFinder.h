@@ -62,8 +62,11 @@ class MVertexFinder : public TObject
   bool  GetUseConstraint() const                   {return mUseConstraint;}
   void  SetUseConstraint(bool v=true)              {mUseConstraint = v;}
   //
-  void  SetMinChangeZ(float v)                     {mMinChangeZ = v;}
-  float GetMinChangeZ() const                      {return mMinChangeZ;}
+  bool  GetCheckStamps() const                     {return mCheckStamps;}
+  void  SetCheckStamps(bool v=true)                {mCheckStamps = v;}
+  //
+  void  SetMinChangeD(float v=3e-4)                {mMinChangeD = v>0 ? v : 1e-4;}
+  float GetMinChangeD() const                      {return mMinChangeD;}
   //
   void  SetZRange(float z)                         {mZRange = z;}
   float GetZRange()     const                      {return mZRange;}
@@ -85,11 +88,11 @@ class MVertexFinder : public TObject
   std::vector<vertex> mVertices;              ///< container for found vertices
   bool  mUseZSorting;                         ///< optionally presort tracks in Z
   bool  mUseConstraint;                       ///< impose mean-vertex constraint
-
+  bool  mCheckStamps;                         ///< allow only tracks with compatible stamps in the vertex
   int   mRemovedTracks;                       ///< number of tracks removed from the pool
   int   mMaxVtxIter;                          ///< max number of iterations per vertex
   int   mMinTracksPerVtx;                     ///< min number of tracks per vertex
-  float mMinChangeZ;                          ///< stop if Z changes by less than this amount
+  float mMinChangeD;                          ///< stop if old-new vtx distance changes by less than this amount
   float mStopScaleChange;                     ///< stopping condition: max sigma2New/sigma2
   float mSigma2Accept;                        ///< stopping condition: acceptable Sigma2
   float mTukey2I;                             ///< 1./[Tukey parameter]^2
