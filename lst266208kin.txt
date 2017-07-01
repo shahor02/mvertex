@@ -1,0 +1,10 @@
+alien:///alice/sim/2017/LHC17f3b_cent/266208/001/Kinematics.root   
+alien:///alice/sim/2017/LHC17f3b_cent/266208/002/Kinematics.root   
+alien:///alice/sim/2017/LHC17f3b_cent/266208/003/Kinematics.root   
+alien:///alice/sim/2017/LHC17f3b_cent/266208/004/Kinematics.root   
+alien:///alice/sim/2017/LHC17f3b_cent/266208/005/Kinematics.root   
+alien:///alice/sim/2017/LHC17f3b_cent/266208/006/Kinematics.root   
+alien:///alice/sim/2017/LHC17f3b_cent/266208/007/Kinematics.root   
+alien:///alice/sim/2017/LHC17f3b_cent/266208/008/Kinematics.root   
+alien:///alice/sim/2017/LHC17f3b_cent/266208/009/Kinematics.root   
+alien:///alice/sim/2017/LHC17f3b_cent/266208/010/Kinematics.root   

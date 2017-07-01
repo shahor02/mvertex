@@ -1,0 +1,10 @@
+alien:///alice/sim/2017/LHC17f3b_cent/266208/001/AliESDs.root   
+alien:///alice/sim/2017/LHC17f3b_cent/266208/002/AliESDs.root   
+alien:///alice/sim/2017/LHC17f3b_cent/266208/003/AliESDs.root   
+alien:///alice/sim/2017/LHC17f3b_cent/266208/004/AliESDs.root   
+alien:///alice/sim/2017/LHC17f3b_cent/266208/005/AliESDs.root   
+alien:///alice/sim/2017/LHC17f3b_cent/266208/006/AliESDs.root   
+alien:///alice/sim/2017/LHC17f3b_cent/266208/007/AliESDs.root   
+alien:///alice/sim/2017/LHC17f3b_cent/266208/008/AliESDs.root   
+alien:///alice/sim/2017/LHC17f3b_cent/266208/009/AliESDs.root   
+alien:///alice/sim/2017/LHC17f3b_cent/266208/010/AliESDs.root   

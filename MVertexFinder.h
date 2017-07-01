@@ -4,6 +4,8 @@
 #include <TObject.h>
 #include <vector>
 
+//#define DEBUGVTX
+
 class MVertexFinder : public TObject
 {
  public:
@@ -44,7 +46,7 @@ class MVertexFinder : public TObject
   
   MVertexFinder();
   void Reset();
-  bool FindVertices();
+  int  FindVertices();
   bool FindNextVertex(std::vector<vtxTrack> &tracks,float zseed,float sigScale2Ini, float zmin,float zmax);
   bool FindNextVertex(std::vector<int> &trcID,float zseed,float sigScale2Ini);
   
@@ -76,6 +78,9 @@ class MVertexFinder : public TObject
   //
   void  PrintVertices() const;
   void  PrintTracks()   const;
+  //
+  int   GetNVertices()  const {return mVertices.size();}
+  const MVertexFinder::vertex* GetVertex(int i) const {return &mVertices[i];}
   //
  protected:
 
@@ -139,7 +144,9 @@ inline void MVertexFinder::DisableTracks(const std::vector<int> &src)
       mRemovedTracks++;
     }
   }
+#ifdef DEBUGVTX   
   printf("Disabling %d tracks after failure\n",ntrAcc);
+#endif
 }
 
 
