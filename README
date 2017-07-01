@@ -1,0 +1,42 @@
+1) clone the package as
+git clone https://github.com/shahor02/mvertex.git
+cd mvertex
+
+2) download from the alien some mc data (here is the example of pA data):
+alisync -n5 @lst266208esd.txt
+alisync -n5 @lst266208galice.txt
+alisync -n5 @lst266208kin.txt
+(the files will be copied to `pwd`/..alien_path, i.e. directories `pwd`/alice/sim/2017/LHC17f3b_cent/266208/...)
+and create the input list
+find . -name `pwd`/alice/sim/2017/LHC17f3b_cent/266208 "AliESDs.root" > esds.txt
+
+To run the vertex reconstruction in aliroot do:
+1) load/compile packages as
+.x prep.C
+2) run event building and vertex reconstruction as
+
+esd2plp(nevent, nplpDef, inputlist)
+where:
+nevent: number of events to compose
+nplpDef: number of single events (from input) list to mix for every event
+if nplpDef<0, then the |nplpDef| will be used as Poissonian mean, i.e. events will be composed of gRandom->Poisson(-nplpDef)
+single events from MC (avoiding empty event generation)
+if nplpDef>0, exactly int(nplpDef) events will be mixed randomly.
+Every generated event will be prepared by picking randomly N MC events (with N according to nplpDef definition), putting
+their tracks to single pool and running the vertexing over this pull.
+After each event we print reconstructed vertices, generated ones and vertices reconstructed (OrigRec:) in separate events in the official MC.e.g.
+Vertices found: 3
+# 0 XYZ: +6.343546e-02 +3.323855e-01 -5.948256e+00 | Ntracks =   18 | Chi2/ntr =    2.53 | Stamp: 3158
+# 1 XYZ: +7.287078e-02 +3.362661e-01 +2.709296e+00 | Ntracks =    2 | Chi2/ntr =    0.19 | Stamp: 1292
+# 2 XYZ: +7.657852e-02 +3.285584e-01 +4.674101e+00 | Ntracks =   11 | Chi2/ntr =    1.50 | Stamp: 3980
+GenVertices: 6
+# 0 Ev#3980 XYZ: +0.084 +0.323   +4.671 : Ngen 568 | OrigRec: XYZ: +0.077 +0.327   +4.673 : Nrec  12
+# 1 Ev#3158 XYZ: +0.062 +0.323   -5.932 : Ngen 432 | OrigRec: XYZ: +0.064 +0.327   -5.939 : Nrec  18
+# 2 Ev#1140 XYZ: +0.065 +0.329   +0.035 : Ngen  58 | OrigRec: XYZ: +0.000 +0.000   +0.000 : Nrec   0
+# 3 Ev#1848 XYZ: +0.074 +0.344   -8.622 : Ngen  69 | OrigRec: XYZ: +0.000 +0.000   +0.000 : Nrec   0
+# 4 Ev#3845 XYZ: +0.072 +0.329   +4.233 : Ngen  39 | OrigRec: XYZ: +0.073 +0.336   +4.238 : Nrec   2
+# 5 Ev#1292 XYZ: +0.069 +0.333   +2.680 : Ngen 122 | OrigRec: XYZ: +0.073 +0.336   +2.710 : Nrec   3
+
+Thus, calling esd2plp(100, 1, "esds.txt") will create 100 events, each made out of just 1 event from the original MC.
+esd2plp(100, 2, "esds.txt") will create 100 events each made of 2 MC events (collisions)
+esd2plp(100, -2, "esds.txt") will create 100 events each made according to Poissonian distribution with mean=2
