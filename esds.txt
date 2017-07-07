@@ -1,7 +1,1 @@
-/data/mcdata/pp15n_LHC16k5b/244411/009/AliESDs.root
-/data/mcdata/pp15n_LHC16k5b/244411/005/AliESDs.root
-/data/mcdata/pp15n_LHC16k5b/244411/001/AliESDs.root
-/data/mcdata/pp15n_LHC16k5b/244411/008/AliESDs.root
-/data/mcdata/pp15n_LHC16k5b/244411/003/AliESDs.root
-/data/mcdata/pp15n_LHC16k5b/244411/002/AliESDs.root
-/data/mcdata/pp15n_LHC16k5b/244411/006/AliESDs.root
+/home/shahoian/dev/mvertex/alice/sim/2017/LHC17f3b_cent/266208/001/AliESDs.root

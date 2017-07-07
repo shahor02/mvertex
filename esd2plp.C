@@ -139,6 +139,7 @@ int CreatePileUpEvent(float nuplp, int startEv, int stepEv, ULong_t flags, ULong
     if (iev) { // find next event
       Bool_t repeat = kFALSE; // make sure there are no repeating events
       do {
+	repeat = kFALSE;
 	int step = stepEv>0 ? stepEv : gRandom->Integer(nEvTot);
 	ev2read += step;
 	ev2read %= nEvTot;
