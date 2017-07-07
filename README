@@ -3,9 +3,9 @@ git clone https://github.com/shahor02/mvertex.git
 cd mvertex
 
 2) download from the alien some mc data (here is the example of pA data):
-alisync -n5 @lst266208esd.txt
-alisync -n5 @lst266208galice.txt
-alisync -n5 @lst266208kin.txt
+alisync -j5 @lst266208esd.txt
+alisync -j5 @lst266208galice.txt
+alisync -j5 @lst266208kin.txt
 (the files will be copied to `pwd`/..alien_path, i.e. directories `pwd`/alice/sim/2017/LHC17f3b_cent/266208/...)
 and create the input list
 find `pwd`/alice/sim/2017/LHC17f3b_cent/266208 -name "AliESDs.root" > esds.txt
