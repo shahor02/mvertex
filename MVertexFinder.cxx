@@ -29,6 +29,8 @@ MVertexFinder::MVertexFinder() :
   ,mSigma2Accept(3.0)
   ,mTukey2I(1./25.f)
   ,mZRange(30.0f)
+  ,mZResAux(200e-4)
+  ,mSplitSig2Factor(4.f)
 {
   mIRPos[0]=mIRPos[1]=mIRPos[2]=0.f;
   mIRSig2I[0]=mIRSig2I[1]=mIRSig2I[2]=0.f;
@@ -104,8 +106,8 @@ bool MVertexFinder::FindNextVertex(std::vector<MVertexFinder::vtxTrack> &tracks,
 	float zLR[2]={0.f};
 	res = false;
 	LRAttractors(tracks,zmin,zmax,vtx.mXYZ[2],zLR); // side to be discarded has zLR == kHugeF (>> than zmax)
-	if (zLR[0]<zmax) res |= FindNextVertex(tracks,zLR[0],scaleSigma2, zmin, vtx.mXYZ[2]); // left: zmin<ZL<curZ
-	if (zLR[1]<zmax) res |= FindNextVertex(tracks,zLR[1],scaleSigma2, vtx.mXYZ[2],zmax);  // right: curZ<ZR<zmax	
+	if (zLR[0]<zmax) res |= FindNextVertex(tracks,zLR[0],scaleSigma2*mSplitSig2Factor,zmin, vtx.mXYZ[2]); // left: zmin<ZL<curZ
+	if (zLR[1]<zmax) res |= FindNextVertex(tracks,zLR[1],scaleSigma2*mSplitSig2Factor,vtx.mXYZ[2],zmax);  // right: curZ<ZR<zmax	
 	break; // stop looping around current seed
       }
       else { // did not converge, disable contributors
@@ -233,7 +235,7 @@ bool MVertexFinder::FindNextVertex(std::vector<int> &trcIDs,float zseed,float si
 	  //	for (int ilr=2;ilr--;) {
 	  for (int ilr=0;ilr<2;ilr++) {
 	    if (zLR[ilr]>=kHugeF || int(trcIdsLR[ilr].size())<mMinTracksPerVtx) DisableTracks(trcIdsLR[ilr]);
-	    else res |= FindNextVertex(trcIdsLR[ilr],zLR[ilr],scaleSigma2);
+	    else res |= FindNextVertex(trcIdsLR[ilr],zLR[ilr],scaleSigma2*mSplitSig2Factor);
 	  }
 	}
 	else DisableTracks(trcIDs); // splitting failed - abandon tracks in current sample
@@ -342,8 +344,7 @@ int MVertexFinder::FindVertices()
   mRemovedTracks = 0;
   if (mUseZSorting) sort(mVtxTracks.begin(),mVtxTracks.end());
   
-  const float zresChar = 200e-4; // characteristic Z resolution
-  float sig2ini = (1.+2.*mZRange)/zresChar, zini=0.0f;
+  float sig2ini = (1.+2.*mZRange)/mZResAux, zini=0.0f;
   sig2ini *= sig2ini;
   //
   //  while (FindNextVertex( mVtxTracks, zini, sig2ini,-mZRange,mZRange)) {}

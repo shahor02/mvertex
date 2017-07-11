@@ -76,6 +76,12 @@ class MVertexFinder : public TObject
   void  SetTukey(float t)                          {mTukey2I = t>0.f ? 1.f/(t*t) : 1.f/(kDefTukey*kDefTukey);}
   float GetTukey()      const;
   //
+  void  setZResAux(float s=200e-4)                 {mZResAux = s>10e-4 ? s:10e-4;}
+  float getZResAux()    const                      {return mZResAux;}
+  //
+  void  setSplitSig2Factor(float s=4)              {mSplitSig2Factor = s>1.f ? s:1.f;}
+  float getSplitSig2Factor() const                 {return mSplitSig2Factor;}
+  //
   void  PrintVertices() const;
   void  PrintTracks()   const;
   //
@@ -102,6 +108,8 @@ class MVertexFinder : public TObject
   float mSigma2Accept;                        ///< stopping condition: acceptable Sigma2
   float mTukey2I;                             ///< 1./[Tukey parameter]^2
   float mZRange;                              ///< ZRange to accept
+  float mZResAux;                             ///< typical Z resolution used to estimated sig2ini (see FindVertices)
+  float mSplitSig2Factor;                     ///< when searching in split LR regions, scale current sigma
   float mIRPos[3];                            ///< nominal vertex constraint
   float mIRSig2I[3];                          ///< nominal vertex constraint inverted errors^2
   //
