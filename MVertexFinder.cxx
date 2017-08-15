@@ -266,7 +266,7 @@ bool MVertexFinder::FindNextVertex(std::vector<int> &trcIDs,float zseed,float si
       }
     }
   }
-  else if (!res) { // disable tracks which failed to make a vertex
+  else /* if (!res) */{ // disable tracks which failed to make a vertex
     DisableTracks(trcIDs);
   }
   //
