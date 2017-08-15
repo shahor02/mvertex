@@ -7,12 +7,14 @@
 #include "AliHeader.h"
 #include "AliGenEventHeader.h"
 #include "AliExternalTrackParam.h"
+#include <TAlienCollection.h>
 #include <TFile.h>
 #include <TTree.h>
 #include <TChain.h>
 #include <TArrayF.h>
 #include <TSystem.h>
 #include <TRandom.h>
+#include <TGrid.h>
 #include <TGeoGlobalMagField.h>
 #include <fstream>
 #include "MVertexFinder.h"
@@ -40,6 +42,10 @@ void LoadInput(const char* inpData,Bool_t mc=kTRUE);
 TChain* LoadChain(const char* inpData, const char* chName="esdTree",const char* altFile=0);
 int CreatePileUpEvent(float nplp, int startEv=0, int stepEv=0, ULong_t flags=0, ULong_t flagsRej=0);
 
+//NEW
+TChain* CreateChainXML(const char *xmlfile,const char* chname = "esdTree", const char* altFile=0);
+
+
 Int_t LoadEvent(Int_t iev);
 Bool_t ResetEvent();
 void FetchESDData(int evID, int evIDOrig, ULong_t flags=0, ULong_t flagsRej=0);
@@ -47,12 +53,13 @@ void AttachToVertexer();
 
 void InitVertexer(float zRange = 30.f);
 
+//NEW void esd2plp(int ntest, float nevload=-2,const char* inpData="wn.xml", Bool_t mc=kTRUE)
 void esd2plp(int ntest, float nevload=-2,const char* inpData="esds.txt", Bool_t mc=kTRUE)
 {
   LoadInput(inpData,mc);
   InitVertexer();
   int icurr = 0;
-
+  ntest = esdTree->GetEntries();
   for (int iev=0;iev<ntest;iev++) {
     icurr = CreatePileUpEvent(nevload,icurr, -1, AliESDtrack::kITSrefit, AliESDtrack::kITSpureSA);
     AttachToVertexer();
@@ -80,7 +87,7 @@ void esd2plp(int ntest, float nevload=-2,const char* inpData="esds.txt", Bool_t 
 	       vtr->GetX(),vtr->GetY(),vtr->GetZ(), vtr->GetNIndices());
       }
     }
-    vtf->PrintTracks();
+    //    vtf->PrintTracks();
     printf("\n");
   }
   //
@@ -267,6 +274,9 @@ TChain* LoadChain(const char* inpData, const char* chName, const char* altFile)
 	flName.ReplaceAll(gSystem->BaseName(flName),altFileS);
       }
       printf("Adding %s\n",flName.Data());
+      if (flName.BeginsWith("alien://") && !gGrid && !TGrid::Connect("alien://")) {
+	exit(1);
+      }
       chain->AddFile(flName.Data());
       flName.ReadLine(inpf);
     }
@@ -281,17 +291,57 @@ TChain* LoadChain(const char* inpData, const char* chName, const char* altFile)
   return chain;
 }
 
+
+//NEW
 //__________________________________________
 void LoadInput(const char* inpData,Bool_t mc)
 {
-  esdTree = LoadChain(inpData,"esdTree");  
+  TString data = inpData;
+  esdTree = data.EndsWith(".xml") ? CreateChainXML(data,"esdTree") : LoadChain(inpData,"esdTree");  
   esdEv = new AliESDEvent();
   esdEv->ReadFromTree(esdTree);
   if (mc) {
-    headTree = LoadChain(inpData,"TE","galice.root");
+    headTree = data.EndsWith(".xml") ? CreateChainXML(data,"galice.root") : LoadChain(inpData,"TE","galice.root");
     header = new AliHeader();
     headTree->SetBranchAddress("Header",&header);
     esdTree->AddFriend(headTree,"mchead");
   }
 }
 
+
+
+//________________________________________________________________________________
+TChain* CreateChainXML(const char *xmlfile, const char* chname, const char* altFile)
+{
+// Create a chain using url's from xml file
+   TString filename;
+   TString altFileS = altFile; 
+   Int_t run = 0;
+   TString treename = chname;
+   printf("***************************************\n");
+   printf("    Getting chain of trees %s\n", treename.Data());
+   printf("***************************************\n");
+   TAlienCollection *coll = (TAlienCollection*)TAlienCollection::Open(xmlfile);
+   if (!coll) {
+      ::Error("CreateChain", "Cannot create an AliEn collection from %s", xmlfile);
+      return NULL;
+   }
+   TChain *chain = new TChain(treename);
+   coll->Reset();
+   while (coll->Next()) {
+      filename = coll->GetTURL();
+      if (!altFileS.IsNull()) { // alternative file should be used
+	filename.ReplaceAll(gSystem->BaseName(filename),altFileS);
+      }
+      if (filename.BeginsWith("alien://") && !gGrid && !TGrid::Connect("alien://")) {
+	exit(1);
+      }
+      chain->Add(filename);
+   }
+   if (!chain->GetNtrees()) {
+      ::Error("CreateChain", "No tree found from collection %s", xmlfile);
+      return NULL;
+   }
+   printf("Created chain with %d entries in %d trees from %s\n",chain->GetEntries(),chain->GetNtrees(),xmlfile);
+   return chain;
+}
